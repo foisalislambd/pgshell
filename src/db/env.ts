@@ -35,6 +35,13 @@ export function getDbUrlFromEnv(): string | null {
   return null;
 }
 
+/** Returns connection URL targeting a specific database (e.g. postgres for admin ops like CREATE/DROP). */
+export function getDbUrlForDatabase(targetDb: string): string | null {
+  const url = getDbUrlFromEnv();
+  if (!url) return null;
+  return url.replace(/\/([^/?#]+)([?#].*)?$/, (_, _db, rest = '') => `/${targetDb}${rest}`);
+}
+
 export function printEnvHint(): void {
   console.log(chalk.yellow(`💡 Hint: No database credentials found in the current directory's .env file.`));
   console.log(chalk.dim(`For automatic connection next time, create a .env file and add:\n`));

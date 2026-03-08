@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import readline from 'readline';
 import { connect, disconnect, query, runOnDatabase } from '../db/client.js';
 import { renderTable } from '../ui/tableRenderer.js';
-import { getDbUrlFromEnv, printEnvHint } from '../db/env.js';
+import { getDbUrlFromEnv, getDbUrlForDatabase, printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 
 function validateDatabaseName(val: string): boolean {
@@ -37,14 +37,6 @@ export async function executeDbListCommand() {
 }
 
 export async function executeDbCreateCommand(name: string) {
-  const connectionString = getDbUrlFromEnv();
-
-  if (!connectionString) {
-    console.error(chalk.red('\nError: Missing database credentials.\n'));
-    printEnvHint();
-    process.exit(1);
-  }
-
   const dbName = name.trim();
   if (!dbName) {
     console.error(chalk.red('\nError: Database name cannot be empty.\n'));
@@ -55,8 +47,16 @@ export async function executeDbCreateCommand(name: string) {
     process.exit(1);
   }
 
+  // Must connect to an existing DB (postgres) to run CREATE DATABASE—connecting to the target DB would fail if it doesn't exist yet
+  const adminConnectionString = getDbUrlForDatabase('postgres');
+  if (!adminConnectionString) {
+    console.error(chalk.red('\nError: Missing database credentials.\n'));
+    printEnvHint();
+    process.exit(1);
+  }
+
   try {
-    await connect({ connectionString });
+    await connect({ connectionString: adminConnectionString });
     await query(`CREATE DATABASE "${dbName}"`);
     console.log(chalk.green(`\n✓ Database "${dbName}" created successfully!`));
   } catch (error: unknown) {
