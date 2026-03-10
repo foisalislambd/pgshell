@@ -7,10 +7,6 @@ import { promptForCredentials } from '../db/cliCredentials.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 
-function validateDatabaseName(val: string): boolean {
-  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(val.trim());
-}
-
 export async function executeDbListCommand() {
   let connectionString: string;
   try {
@@ -50,10 +46,8 @@ export async function executeDbCreateCommand(name: string) {
     console.error(chalk.red('\nError: Database name cannot be empty.\n'));
     process.exit(1);
   }
-  if (!validateDatabaseName(dbName)) {
-    console.error(chalk.red('\nError: Database name must use only letters, numbers, underscores (e.g. my_database).\n'));
-    process.exit(1);
-  }
+
+  const escaped = dbName.replace(/"/g, '""');
 
   // Must connect to an existing DB (postgres) to run CREATE DATABASE
   let adminConnectionString: string;
@@ -72,7 +66,7 @@ export async function executeDbCreateCommand(name: string) {
 
   try {
     await connect({ connectionString: adminConnectionString });
-    await query(`CREATE DATABASE "${dbName}"`);
+    await query(`CREATE DATABASE "${escaped}"`);
     console.log(chalk.green(`\n✓ Database "${dbName}" created successfully!`));
   } catch (error: unknown) {
     console.error(chalk.red(`\nError: ${sanitizeErrorMessage(error)}`));
@@ -112,10 +106,8 @@ export async function executeDbDropCommand(name: string, force = false) {
     console.error(chalk.red('\nError: Database name cannot be empty.\n'));
     process.exit(1);
   }
-  if (!validateDatabaseName(dbName)) {
-    console.error(chalk.red('\nError: Database name must use only letters, numbers, underscores.\n'));
-    process.exit(1);
-  }
+
+  const escaped = dbName.replace(/"/g, '""');
 
   if (!force) {
     const confirmed = await promptConfirmation(
@@ -134,7 +126,7 @@ export async function executeDbDropCommand(name: string, force = false) {
         `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
         [dbName]
       );
-      await adminPool.query(`DROP DATABASE "${dbName}"`);
+      await adminPool.query(`DROP DATABASE "${escaped}"`);
     });
     console.log(chalk.green(`\n✓ Database "${dbName}" dropped successfully!`));
   } catch (error: unknown) {

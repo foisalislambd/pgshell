@@ -191,22 +191,21 @@ async function handleListDatabases() {
   renderTable(result.rows);
 }
 
-function validateDatabaseName(val: string): true | string {
-  const trimmed = val.trim();
-  if (trimmed.length === 0) return 'Database name cannot be empty';
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) return 'Use only letters, numbers, underscores (e.g. my_database)';
-  return true;
-}
-
 async function handleCreateDatabase() {
   const dbName = await input({
-    message: 'Enter new database name:',
-    validate: validateDatabaseName
+    message: 'Enter new database name (any valid PostgreSQL name: letters, numbers, hyphens, etc.):'
   });
 
+  const trimmed = dbName.trim();
+  if (!trimmed) {
+    console.log(chalk.red('\nDatabase name cannot be empty.'));
+    return;
+  }
+
+  const escaped = trimmed.replace(/"/g, '""');
   try {
-    await dbQuery(`CREATE DATABASE "${dbName}"`);
-    console.log(chalk.green(`\n✓ Database "${dbName}" created! You can switch to it from the menu anytime.`));
+    await dbQuery(`CREATE DATABASE "${escaped}"`);
+    console.log(chalk.green(`\n✓ Database "${trimmed}" created! You can switch to it from the menu anytime.`));
   } catch (err: unknown) {
     console.log(chalk.red(`\nFailed to create database: ${sanitizeErrorMessage(err)}`));
   }
@@ -240,11 +239,12 @@ async function handleDropDatabase() {
     return;
   }
 
+  const escapedDrop = dbToDrop.replace(/"/g, '""');
   try {
     const postgresUrl = dbToDrop === currentDb ? getAdminConnectionString('postgres') : null;
     await runOnDatabase('postgres', async (adminPool) => {
       await adminPool.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`, [dbToDrop]);
-      await adminPool.query(`DROP DATABASE "${dbToDrop}"`);
+      await adminPool.query(`DROP DATABASE "${escapedDrop}"`);
     });
     console.log(chalk.green(`\n✓ Database "${dbToDrop}" dropped successfully!`));
     if (dbToDrop === currentDb && postgresUrl) {
@@ -595,8 +595,6 @@ async function handleRunQuery() {
   const sql = await input({
     message: 'Enter your SQL query (we\'ll run it for you):'
   });
-
-  if (!sql.trim()) return;
 
   try {
     const result = await withSpinner(
