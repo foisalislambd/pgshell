@@ -1,65 +1,66 @@
-import { input, select, password, confirm } from '@inquirer/prompts';
+import { input, confirm } from '@inquirer/prompts';
 import chalk from 'chalk';
-import { connect, disconnect, query as dbQuery, getAdminConnectionString, runOnDatabase } from '../db/client.js';
+import { connect, disconnect, query as dbQuery, getAdminConnectionString, getConnectionString, runOnDatabase } from '../db/client.js';
 import { renderTable } from './tableRenderer.js';
 import { fuzzySelect } from './fuzzySelect.js';
-import { getDbUrlFromEnv, printEnvHint } from '../db/env.js';
+import { resolveConnection, replaceDatabaseInUrl, getConnectionStringForDb } from '../db/connectionResolver.js';
+import { promptForCredentials } from '../db/cliCredentials.js';
+import { loadStoredProfile, saveStoredProfile, setStoredPassword } from '../db/credentials.js';
 import { printBanner } from '../utils/banner.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
 
+const GET_DATABASES_SQL = `
+  SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
+  FROM pg_database
+  WHERE datistemplate = false
+  ORDER BY datname;
+`;
+
 export async function runInteractiveUI() {
   console.clear();
   printBanner();
 
-  // Connection Phase
   let connected = false;
-  let connectionString = getDbUrlFromEnv() || '';
-
-  if (!connectionString) {
-    printEnvHint();
-  } else {
-    console.log(chalk.gray('Found database credentials in .env file automatically.\n'));
-  }
+  let connectionString = '';
 
   while (!connected) {
     try {
-      if (!connectionString) {
-        const connType = await select({
-          message: 'How would you like to connect to PostgreSQL right now?',
-          choices: [
-            { name: '🏠 Localhost (Interactive Setup)', value: 'local', description: 'Enter username, password, and port manually' },
-            { name: '🌐 External / URI (Paste Connection String)', value: 'external', description: 'Paste a full postgres:// connection URL' }
-          ]
-        });
+      const resolved = await resolveConnection(promptForCredentials);
 
-        if (connType === 'local') {
-          const user = await input({ message: 'Username:', default: 'postgres' });
-          const pass = await password({ message: 'Password:', mask: '*' });
-          const host = await input({ message: 'Host:', default: 'localhost' });
-          const port = await input({ message: 'Port:', default: '5432' });
-          const db = await input({ message: 'Database Name:', default: 'postgres' });
-
-          const encodedPass = encodeURIComponent(pass);
-          connectionString = `postgresql://${user}:${encodedPass}@${host}:${port}/${db}`;
-        } else {
-          connectionString = await input({
-            message: 'Enter your PostgreSQL connection string (DATABASE_URL):',
-            validate: (val) => val.startsWith('postgres') ? true : 'Must be a valid Postgres connection string (postgres://... or postgresql://...)'
-          });
-        }
+      if (resolved.targetDatabase) {
+        console.log(chalk.gray(`Using .env → connecting directly to "${resolved.targetDatabase}"\n`));
       }
+      connectionString = resolved.connectionString;
 
       await withSpinner(
-        'Connecting to your database...',
+        'Connecting...',
         async () => {
           await connect({ connectionString });
           connected = true;
         },
-        { successMessage: chalk.green("Connected! You're ready to go.\n") }
+        { successMessage: chalk.green('Connected!\n') }
       );
 
+      if (!resolved.targetDatabase) {
+        const result = await dbQuery(GET_DATABASES_SQL);
+        const databases = result.rows as { Database: string; Size: string }[];
+        if (databases.length === 0) {
+          console.log(chalk.yellow('No databases found on server.'));
+          process.exit(0);
+        }
+        const selected = await fuzzySelect(
+          'Select database to connect to (type to search):',
+          databases.map((r) => ({ name: `${r.Database} (${r.Size})`, value: r.Database }))
+        );
+        const newConnStr = replaceDatabaseInUrl(connectionString, selected);
+        await disconnect();
+        await connect({ connectionString: newConnStr });
+        console.log(chalk.green(`✓ Connected to "${selected}"\n`));
+      }
+
+      break;
     } catch (error: unknown) {
       const err = error as Error & { name?: string };
       if (err?.name === 'ExitPromptError' || err?.message?.includes('SIGINT')) {
@@ -67,7 +68,6 @@ export async function runInteractiveUI() {
         process.exit(0);
       }
       console.log(chalk.red(`\nConnection failed: ${sanitizeErrorMessage(error)}\n`));
-      connectionString = ''; // Reset so they can type it again
     }
   }
 
@@ -92,6 +92,7 @@ export async function runInteractiveUI() {
         { name: '➕ Create database', value: 'create_database' as const, description: 'Create new database' },
         { name: '🗑️  Delete database', value: 'drop_database' as const, description: 'Remove database' },
         { name: '🔄 Switch database', value: 'switch_database' as const, description: 'Reconnect to different DB' },
+        { name: '🔐 Re-setup credentials', value: 'reset_credentials' as const, description: 'Update stored password (e.g. after password change)' },
         { name: '❌ Disconnect & Exit', value: 'exit' as const, description: 'Close and quit' }
       ];
 
@@ -113,6 +114,9 @@ export async function runInteractiveUI() {
           break;
         case 'switch_database':
           await handleSwitchDatabase();
+          break;
+        case 'reset_credentials':
+          await handleResetCredentials();
           break;
         case 'list_tables':
           await handleListTables();
@@ -169,13 +173,6 @@ const GET_TABLES_SQL = `
   FROM information_schema.tables 
   WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
   ORDER BY table_name;
-`;
-
-const GET_DATABASES_SQL = `
-  SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
-  FROM pg_database
-  WHERE datistemplate = false
-  ORDER BY datname;
 `;
 
 async function getPublicTables(): Promise<{ table_name: string }[]> {
@@ -306,6 +303,61 @@ async function handleSwitchDatabase() {
         console.log(chalk.red('Reconnection failed. You may need to reconnect manually.'));
       }
     }
+  }
+}
+
+async function handleResetCredentials() {
+  let existingProfile = loadStoredProfile();
+  const currentConn = getConnectionString();
+  if (currentConn) {
+    try {
+      const url = new URL(currentConn);
+      existingProfile = {
+        host: url.hostname,
+        port: url.port || '5432',
+        user: url.username || 'postgres'
+      };
+    } catch {
+      /* use loadStoredProfile if parse fails */
+    }
+  }
+
+  try {
+    const prompted = await promptForCredentials(existingProfile ?? undefined);
+    const profile = { host: prompted.host, port: prompted.port, user: prompted.user };
+    await setStoredPassword(profile, prompted.password);
+    saveStoredProfile(profile);
+
+    const currentDb = await getCurrentDatabase();
+    const db = currentDb || 'postgres';
+    let queryString: string | null = null;
+    if (currentConn) {
+      try {
+        const url = new URL(currentConn);
+        queryString = url.search ? url.search.slice(1) : null;
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const newConnStr = getConnectionStringForDb(
+      prompted.host,
+      prompted.port,
+      prompted.user,
+      prompted.password,
+      db,
+      queryString
+    );
+
+    await disconnect();
+    await connect({ connectionString: newConnStr });
+    console.log(chalk.green(`\n✓ Credentials updated and reconnected. New password will be used from next run.`));
+  } catch (err: unknown) {
+    const e = err as Error & { name?: string };
+    if (e?.name === 'ExitPromptError' || e?.message?.includes('SIGINT')) {
+      return;
+    }
+    console.log(chalk.red(`\nFailed to reset credentials: ${sanitizeErrorMessage(err)}`));
   }
 }
 

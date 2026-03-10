@@ -1,17 +1,30 @@
 import chalk from 'chalk';
 import { connect, disconnect, query } from '../db/client.js';
 import { renderTable } from '../ui/tableRenderer.js';
-import { getDbUrlFromEnv, printEnvHint } from '../db/env.js';
+import { resolveConnection } from '../db/connectionResolver.js';
+import { promptForCredentials } from '../db/cliCredentials.js';
+import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
 
 export async function executeQueryCommand(sql: string) {
-  const connectionString = getDbUrlFromEnv();
-
-  if (!connectionString) {
-    console.error(chalk.red('\nError: Missing database credentials.\n'));
-    printEnvHint();
+  let connectionString: string;
+  try {
+    const resolved = await resolveConnection(promptForCredentials);
+    if (!resolved.targetDatabase) {
+      console.error(chalk.red('\nError: query command requires a target database. Add DB_NAME to your .env file.\n'));
+      printEnvHint();
+      process.exit(1);
+    }
+    connectionString = resolved.connectionString;
+  } catch (err) {
+    if (!process.stdin.isTTY) {
+      console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file with DB_NAME.\n'));
+      printEnvHint();
+    } else {
+      console.error(chalk.red(`\nError: ${sanitizeErrorMessage(err)}\n`));
+    }
     process.exit(1);
   }
 

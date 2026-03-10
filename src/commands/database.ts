@@ -2,7 +2,9 @@ import chalk from 'chalk';
 import readline from 'readline';
 import { connect, disconnect, query, runOnDatabase } from '../db/client.js';
 import { renderTable } from '../ui/tableRenderer.js';
-import { getDbUrlFromEnv, getDbUrlForDatabase, printEnvHint } from '../db/env.js';
+import { resolveConnection, replaceDatabaseInUrl } from '../db/connectionResolver.js';
+import { promptForCredentials } from '../db/cliCredentials.js';
+import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 
 function validateDatabaseName(val: string): boolean {
@@ -10,11 +12,17 @@ function validateDatabaseName(val: string): boolean {
 }
 
 export async function executeDbListCommand() {
-  const connectionString = getDbUrlFromEnv();
-
-  if (!connectionString) {
-    console.error(chalk.red('\nError: Missing database credentials.\n'));
-    printEnvHint();
+  let connectionString: string;
+  try {
+    const resolved = await resolveConnection(promptForCredentials);
+    connectionString = replaceDatabaseInUrl(resolved.connectionString, 'postgres');
+  } catch (err) {
+    if (!process.stdin.isTTY) {
+      console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file.\n'));
+      printEnvHint();
+    } else {
+      console.error(chalk.red(`\nError: ${sanitizeErrorMessage(err)}\n`));
+    }
     process.exit(1);
   }
 
@@ -47,11 +55,18 @@ export async function executeDbCreateCommand(name: string) {
     process.exit(1);
   }
 
-  // Must connect to an existing DB (postgres) to run CREATE DATABASE—connecting to the target DB would fail if it doesn't exist yet
-  const adminConnectionString = getDbUrlForDatabase('postgres');
-  if (!adminConnectionString) {
-    console.error(chalk.red('\nError: Missing database credentials.\n'));
-    printEnvHint();
+  // Must connect to an existing DB (postgres) to run CREATE DATABASE
+  let adminConnectionString: string;
+  try {
+    const resolved = await resolveConnection(promptForCredentials);
+    adminConnectionString = replaceDatabaseInUrl(resolved.connectionString, 'postgres');
+  } catch (err) {
+    if (!process.stdin.isTTY) {
+      console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file.\n'));
+      printEnvHint();
+    } else {
+      console.error(chalk.red(`\nError: ${sanitizeErrorMessage(err)}\n`));
+    }
     process.exit(1);
   }
 
@@ -78,11 +93,17 @@ function promptConfirmation(question: string): Promise<boolean> {
 }
 
 export async function executeDbDropCommand(name: string, force = false) {
-  const connectionString = getDbUrlFromEnv();
-
-  if (!connectionString) {
-    console.error(chalk.red('\nError: Missing database credentials.\n'));
-    printEnvHint();
+  let connectionString: string;
+  try {
+    const resolved = await resolveConnection(promptForCredentials);
+    connectionString = replaceDatabaseInUrl(resolved.connectionString, 'postgres');
+  } catch (err) {
+    if (!process.stdin.isTTY) {
+      console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file.\n'));
+      printEnvHint();
+    } else {
+      console.error(chalk.red(`\nError: ${sanitizeErrorMessage(err)}\n`));
+    }
     process.exit(1);
   }
 
