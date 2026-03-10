@@ -355,7 +355,7 @@ async function handleResetCredentials() {
   } catch (err: unknown) {
     const e = err as Error & { name?: string };
     if (e?.name === 'ExitPromptError' || e?.message?.includes('SIGINT')) {
-      return;
+      throw err; // Let the main loop handle the exit cleanly
     }
     console.log(chalk.red(`\nFailed to reset credentials: ${sanitizeErrorMessage(err)}`));
   }
