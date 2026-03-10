@@ -3,7 +3,7 @@ import type { StoredConnectionProfile } from './credentials.js';
 
 export async function promptForCredentials(
   existing?: StoredConnectionProfile
-): Promise<{ host: string; port: string; user: string; password: string }> {
+): Promise<{ host: string; port: string; user: string; password: string; database?: string }> {
   if (!process.stdin.isTTY) {
     throw new Error('Cannot prompt for credentials: not running in an interactive terminal (no TTY). Create a .env file or run from a terminal.');
   }
@@ -25,12 +25,17 @@ export async function promptForCredentials(
     try {
       const url = new URL(uri);
       const pass = url.password ? decodeURIComponent(url.password) : '';
-      return {
+      const dbPath = url.pathname.slice(1).split('?')[0];
+      const result: { host: string; port: string; user: string; password: string; database?: string } = {
         host: url.hostname,
         port: url.port || '5432',
         user: url.username || 'postgres',
         password: pass
       };
+      if (dbPath) {
+        result.database = dbPath;
+      }
+      return result;
     } catch {
       throw new Error('Invalid connection string');
     }

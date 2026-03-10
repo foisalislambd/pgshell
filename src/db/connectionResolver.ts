@@ -102,7 +102,13 @@ export function getConnectionStringForDb(
 
 /** Replace database in a connection URL */
 export function replaceDatabaseInUrl(connectionString: string, db: string): string {
-  return connectionString.replace(/\/([^/?#]+)([?#].*)?$/, (_, _db, rest = '') => `/${db}${rest || ''}`);
+  try {
+    const url = new URL(connectionString);
+    url.pathname = `/${db}`;
+    return url.toString();
+  } catch {
+    return connectionString.replace(/\/([^/?#]+)([?#].*)?$/, (_, _db, rest = '') => `/${db}${rest || ''}`);
+  }
 }
 
 /**
@@ -115,6 +121,7 @@ export async function resolveConnection(
     port: string;
     user: string;
     password: string;
+    database?: string;
   }>
 ): Promise<ResolvedConnection> {
   const envConfig = getEnvConfig();
@@ -165,6 +172,7 @@ export async function resolveConnection(
   const storedProfile = loadStoredProfile();
   let profile = storedProfile;
   let password = storedProfile ? await getStoredPassword(storedProfile) : null;
+  let targetDb: string | null = null;
 
   if (!profile || !password) {
     const prompted = await promptForCredentials(storedProfile ?? undefined);
@@ -174,6 +182,7 @@ export async function resolveConnection(
       user: prompted.user
     };
     password = prompted.password;
+    targetDb = prompted.database || null;
     await setStoredPassword(profile, password);
     saveStoredProfile(profile);
   }
@@ -183,12 +192,12 @@ export async function resolveConnection(
     profile.port,
     profile.user,
     password!,
-    'postgres'
+    targetDb || 'postgres'
   );
 
   return {
     connectionString: connStr,
-    targetDatabase: null,
+    targetDatabase: targetDb,
     fromEnv: false
   };
 }

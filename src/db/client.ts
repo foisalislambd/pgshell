@@ -10,8 +10,14 @@ export interface DBConnectionConfig {
 /** Returns connection string for admin operations (e.g. connect to postgres DB) */
 export function getAdminConnectionString(targetDb = 'postgres'): string | null {
   if (!storedConnectionString) return null;
-  // Replace database name in URL with target (e.g. postgres for DROP DATABASE)
-  return storedConnectionString.replace(/\/([^/]+)(\?.*)?$/, (_, _db, q = '') => `/${targetDb}${q}`);
+  try {
+    const url = new URL(storedConnectionString);
+    url.pathname = `/${targetDb}`;
+    return url.toString();
+  } catch {
+    // Fallback if not a valid URL (e.g. key-value pairs)
+    return storedConnectionString.replace(/\/([^/]+)(\?.*)?$/, (_, _db, q = '') => `/${targetDb}${q}`);
+  }
 }
 
 /** Returns the current connection string, or null if not connected */
