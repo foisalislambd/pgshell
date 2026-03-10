@@ -79,27 +79,27 @@ export async function runInteractiveUI() {
       const dbLabel = currentDb ? chalk.dim(` │ 📂 ${currentDb}`) : '';
 
       const menuChoices = [
-        { name: '📋 List all tables', value: 'list_tables' as const, description: 'See what tables exist' },
-        { name: '🔍 View table data', value: 'view_table' as const, description: 'Browse rows in any table' },
-        { name: '📖 Table structure', value: 'describe_table' as const, description: 'See columns, types, details' },
-        { name: '➕ Create new table', value: 'create_table' as const, description: 'Create a new table' },
-        { name: '📥 Add new row', value: 'insert_row' as const, description: 'Insert a record' },
-        { name: '🗑️  Delete one table', value: 'drop_table' as const, description: 'Remove a single table' },
-        { name: '🚨 Delete all tables', value: 'drop_all_tables' as const, description: 'Warning! Removes all data' },
-        { name: '⚡ Run custom SQL', value: 'run_query' as const, description: 'Execute any SQL' },
-        { name: '📊 Monitor active queries', value: 'monitor' as const, description: 'See running queries' },
-        { name: '📂 List all databases', value: 'list_databases' as const, description: 'See all databases' },
-        { name: '➕ Create database', value: 'create_database' as const, description: 'Create new database' },
-        { name: '🗑️  Delete database', value: 'drop_database' as const, description: 'Remove database' },
-        { name: '🔄 Switch database', value: 'switch_database' as const, description: 'Reconnect to different DB' },
-        { name: '🔐 Re-setup credentials', value: 'reset_credentials' as const, description: 'Update stored password (e.g. after password change)' },
-        { name: '❌ Disconnect & Exit', value: 'exit' as const, description: 'Close and quit' }
+        { name: chalk.cyan('Data') + '     🔍 View table data', value: 'view_table' as const, description: 'Browse rows in any table' },
+        { name: chalk.cyan('Data') + '     📥 Add new row', value: 'insert_row' as const, description: 'Insert a record' },
+        { name: chalk.green('Query') + '    ⚡ Run custom SQL', value: 'run_query' as const, description: 'Execute any SQL' },
+        { name: chalk.green('Query') + '    📊 Monitor active queries', value: 'monitor' as const, description: 'See running queries' },
+        { name: chalk.magenta('Schema') + '   📋 List all tables', value: 'list_tables' as const, description: 'See what tables exist' },
+        { name: chalk.magenta('Schema') + '   📖 Table structure', value: 'describe_table' as const, description: 'See columns, types, details' },
+        { name: chalk.magenta('Schema') + '   ➕ Create new table', value: 'create_table' as const, description: 'Create a new table' },
+        { name: chalk.magenta('Schema') + '   🗑️  Delete one table', value: 'drop_table' as const, description: 'Remove a single table' },
+        { name: chalk.red('Schema') + '   🚨 Delete all tables', value: 'drop_all_tables' as const, description: 'Warning! Removes all data' },
+        { name: chalk.yellow('Server') + '   📂 List all databases', value: 'list_databases' as const, description: 'See all databases' },
+        { name: chalk.yellow('Server') + '   🔄 Switch database', value: 'switch_database' as const, description: 'Reconnect to different DB' },
+        { name: chalk.yellow('Server') + '   ➕ Create database', value: 'create_database' as const, description: 'Create new database' },
+        { name: chalk.yellow('Server') + '   🗑️  Delete database', value: 'drop_database' as const, description: 'Remove database' },
+        { name: chalk.gray('System') + '   🔐 Re-setup credentials', value: 'reset_credentials' as const, description: 'Update stored password (e.g. after password change)' },
+        { name: chalk.gray('System') + '   ❌ Disconnect & Exit', value: 'exit' as const, description: 'Close and quit' }
       ];
 
       const action = await fuzzySelect(
         chalk.bold('What would you like to do?') + dbLabel + chalk.dim(' (type to filter)'),
         menuChoices,
-        { pageSize: 12 }
+        { pageSize: 15 }
       );
 
       switch (action) {

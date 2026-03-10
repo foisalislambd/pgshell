@@ -10,13 +10,14 @@ const LINES = [
   '   ╚═╝      ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝ ╚═╝     '
 ];
 
-const cyanPink = gradient(['#06b6d4', '#ec4899']);
+const brandGradient = gradient(['#3b82f6', '#8b5cf6', '#ec4899']);
 
 export function printBanner(): void {
   console.log();
-  console.log(cyanPink.multiline(LINES.join('\n')));
-  console.log(chalk.gray('   ─────────────────────────────────────────────────────'));
-  console.log(chalk.dim('   Your PostgreSQL assistant • Type to search, we\'ve got you covered'));
-  console.log(chalk.gray('   ─────────────────────────────────────────────────────'));
+  console.log(brandGradient.multiline(LINES.join('\n')));
+  console.log(chalk.dim('  ╭───────────────────────────────────────────────────╮'));
+  console.log(chalk.dim('  │') + chalk.bold.white('   Interactive PostgreSQL CLI Manager              ') + chalk.dim('│'));
+  console.log(chalk.dim('  │') + chalk.gray('   Navigate, query, and manage with ease           ') + chalk.dim('│'));
+  console.log(chalk.dim('  ╰───────────────────────────────────────────────────╯'));
   console.log();
 }

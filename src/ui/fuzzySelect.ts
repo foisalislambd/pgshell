@@ -1,5 +1,12 @@
 import { search } from '@inquirer/prompts';
 import { Fzf } from 'fzf';
+import chalk from 'chalk';
+
+// Quick utility to strip ANSI codes
+function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1B\[\d+;?\d*m/g, '');
+}
 
 export interface FuzzyChoice<T = string> {
   name: string;
@@ -25,7 +32,7 @@ export async function fuzzySelect<T = string>(
   }
 
   const names: string[] = choices.map((c) => c.name);
-  const fzf = new Fzf(names, { selector: (item: string) => item });
+  const fzf = new Fzf(names, { selector: (item: string) => stripAnsi(item) });
 
   const choiceMap = new Map(choices.map((c) => [c.name, c]));
 
@@ -35,7 +42,7 @@ export async function fuzzySelect<T = string>(
 
   const selected = await search<string | T>({
     message,
-    pageSize: options?.pageSize ?? 10,
+    pageSize: options?.pageSize ?? 15, // Increased default page size to fit more options
     default: defaultName as string | undefined,
     source: async (input: string | undefined) => {
       const filtered =
