@@ -50,11 +50,11 @@ program
 
 // List tables
 program
-  .command('table')
-  .description('List all tables (uses .env DB if set, otherwise prompts to select database)')
-  .action(async () => {
+  .command('table [dbName]')
+  .description('List all tables (dbName: direct database, or .env DB, or prompts to select)')
+  .action(async (dbName?: string) => {
     try {
-      await executeTableCommand();
+      await executeTableCommand(dbName);
     } catch (error) {
       handleExit(error);
     }

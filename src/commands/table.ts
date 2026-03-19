@@ -28,14 +28,19 @@ const GET_TABLES_SQL = `
   ORDER BY t.table_name;
 `;
 
-export async function executeTableCommand() {
+export async function executeTableCommand(dbNameArg?: string) {
   try {
     const resolved = await resolveConnection(promptForCredentials);
 
     let connectionString = resolved.connectionString;
-    let targetDbName = resolved.targetDatabase;
+    let targetDbName: string | null;
 
-    if (targetDbName) {
+    if (dbNameArg?.trim()) {
+      targetDbName = dbNameArg.trim();
+      connectionString = replaceDatabaseInUrl(resolved.connectionString, targetDbName);
+      console.log(chalk.gray(`Connecting to "${targetDbName}"...\n`));
+    } else if (resolved.targetDatabase) {
+      targetDbName = resolved.targetDatabase;
       console.log(chalk.gray(`Using .env → connecting to "${targetDbName}"\n`));
     } else {
       connectionString = replaceDatabaseInUrl(connectionString, 'postgres');
