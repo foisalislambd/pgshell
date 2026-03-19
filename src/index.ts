@@ -23,7 +23,22 @@ const program = new Command();
 program
   .name('pgshell')
   .description('All-in-one powerful and human-friendly PostgreSQL CLI Manager')
-  .version(pkg.version);
+  .version(pkg.version)
+  .addHelpText(
+    'after',
+    `
+Commands:
+  ui, view     Interactive menu (default) — browse DBs, tables, run SQL
+  query <sql>  Run a raw SQL query
+  list         List all databases with sizes
+  create       Create a new database
+  drop         Drop a database (use --yes to skip confirmation)
+  table        List all tables in a database
+  delete       Drop all tables in a database
+
+Config: .env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) or DATABASE_URL.
+Run "pgshell <command> --help" for details on any command.`
+  );
 
 // Helper to handle any top-level graceful exits
 const handleExit = (error: unknown) => {
@@ -48,7 +63,17 @@ const launchUI = async () => {
 
 program
   .command('ui', { isDefault: true })
-  .description('Launch the interactive UI')
+  .description('Launch the interactive menu for databases and tables')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell          Start interactive UI (default)
+  pgshell ui       Same as above
+
+Use .env or enter credentials when prompted. Browse databases, tables,
+run SQL, monitor queries, create/drop tables — all from the menu.`
+  )
   .action(launchUI);
 
 program
@@ -59,7 +84,16 @@ program
 // List tables
 program
   .command('table [dbName]')
-  .description('List all tables (dbName: direct database, or .env DB, or prompts to select)')
+  .description('List all tables in a database with schema, owner, and row estimates')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell table              Use .env DB or fuzzy-select database
+  pgshell table my_database  List tables in my_database directly
+
+Shows: schema, table name, type, owner, estimated row count.`
+  )
   .action(async (dbName?: string) => {
     try {
       await executeTableCommand(dbName);
@@ -71,7 +105,17 @@ program
 // Direct Query Execution
 program
   .command('query <sql>')
-  .description('Execute a raw SQL query directly')
+  .description('Execute a raw SQL query and display formatted results')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell query "SELECT * FROM users LIMIT 5"
+  pgshell query "SELECT COUNT(*) FROM orders"
+  pgshell query "INSERT INTO logs (message) VALUES ('test')"
+
+Requires .env credentials. Output is formatted as a table. Exits with code 1 on errors.`
+  )
   .action(async (sql) => {
     try {
       await executeQueryCommand(sql);
@@ -83,7 +127,15 @@ program
 // Database commands
 program
   .command('list')
-  .description('List all databases on the server')
+  .description('List all databases on the server with sizes')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell list
+
+Shows database names and sizes (human-readable). Uses .env or prompts for credentials.`
+  )
   .action(async () => {
     try {
       await executeDbListCommand();
@@ -95,6 +147,15 @@ program
 program
   .command('create <name>')
   .description('Create a new database')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell create my_app_db
+  pgshell create test_backup
+
+Connects to postgres by default. Database name: letters, numbers, underscores only.`
+  )
   .action(async (name) => {
     try {
       await executeDbCreateCommand(name);
@@ -105,8 +166,17 @@ program
 
 program
   .command('drop <name>')
-  .description('Drop a database')
+  .description('Drop a database (prompts for confirmation unless --yes)')
   .option('-y, --yes', 'Skip confirmation prompt')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell drop old_database       Prompts: "Are you sure?"
+  pgshell drop old_database --yes No prompt, drops immediately
+
+Cannot be undone. If you drop the DB you're connected to, PgShell reconnects to postgres.`
+  )
   .action(async (name, opts: { yes?: boolean }) => {
     try {
       await executeDbDropCommand(name, opts?.yes ?? false);
@@ -117,7 +187,16 @@ program
 
 program
   .command('delete [dbName]')
-  .description('Drop all tables in a database (dbName: direct, or .env DB, or prompts to select)')
+  .description('Drop all tables in the public schema of a database')
+  .addHelpText(
+    'after',
+    `
+Examples:
+  pgshell delete              Use .env DB or fuzzy-select database
+  pgshell delete my_database  Drop all tables in my_database
+
+Prompts for confirmation before dropping. Cannot be undone. Shows table list before asking.`
+  )
   .action(async (dbName?: string) => {
     try {
       await executeDeleteCommand(dbName);
