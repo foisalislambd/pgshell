@@ -9,6 +9,7 @@ import { runInteractiveUI } from './ui/mainMenu.js';
 import { executeQueryCommand } from './commands/query.js';
 import { executeDbListCommand, executeDbCreateCommand, executeDbDropCommand } from './commands/database.js';
 import { executeTableCommand } from './commands/table.js';
+import { executeDeleteCommand } from './commands/delete.js';
 import chalk from 'chalk';
 import { sanitizeErrorMessage } from './utils/sanitizeError.js';
 
@@ -102,6 +103,17 @@ program
   .action(async (name, opts: { yes?: boolean }) => {
     try {
       await executeDbDropCommand(name, opts?.yes ?? false);
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+program
+  .command('delete [dbName]')
+  .description('Drop all tables in a database (dbName: direct, or .env DB, or prompts to select)')
+  .action(async (dbName?: string) => {
+    try {
+      await executeDeleteCommand(dbName);
     } catch (error) {
       handleExit(error);
     }
