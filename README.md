@@ -8,69 +8,98 @@
 
 <h1 align="center">PgShell</h1>
 <p align="center">
-  <strong>All-in-one powerful and human-friendly PostgreSQL CLI Manager</strong>
+  <strong>Your friendly PostgreSQL companion for the terminal</strong>
 </p>
 
 <p align="center">
-  <em>Explore, modify, and monitor PostgreSQL databases from the terminal — no GUI required.</em>
+  <em>Explore, modify, and monitor PostgreSQL databases — no GUI, no fuss.</em>
 </p>
+
+---
+
+## 🚀 Quick Start (30 seconds)
+
+**New here?** Follow these three steps:
+
+1. **Install**
+   ```bash
+   npm install -g pgshell
+   ```
+
+2. **Configure** — Create a `.env` file in your project folder (or where you'll run `pgshell`):
+   ```env
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_USER=postgres
+   DB_PASSWORD=your_password
+   DB_NAME=your_database
+   ```
+   Or use a single URL: `DATABASE_URL="postgresql://user:password@localhost:5432/dbname"`
+
+3. **Run**
+   ```bash
+   pgshell
+   ```
+
+That's it! PgShell will connect and show you an interactive menu. If you skip the `.env`, PgShell will ask for connection details the first time — and optionally save your password in your OS keychain (Windows Credential Manager, macOS Keychain, or Linux Secret Service) so you don't have to type it again.
 
 ---
 
 ## ✨ What is PgShell?
 
-PgShell is a terminal-based tool that gives you full control over PostgreSQL through an **interactive menu** and **direct query mode**. Connect to local or cloud databases, browse tables, run SQL, monitor activity — all from your favorite terminal.
+PgShell is a terminal-based tool that gives you full control over PostgreSQL. Use the **interactive menu** for guided tasks, or run **direct commands** for quick one-liners — no more opening a separate GUI.
 
 | | |
 |---|---|
-| 🖥️ | **Interactive UI** — Guided menus for common tasks |
-| ⚡ | **Direct queries** — `pgshell query "SELECT * FROM users"` |
-| 🔐 | **Flexible config** — `.env`, URI, or interactive setup |
+| 🖥️ | **Interactive UI** — Guided menus for browsing, creating, and managing |
+| ⚡ | **CLI commands** — `pgshell query "SELECT * FROM users"` |
+| 🔐 | **Flexible setup** — `.env`, URI, or interactive prompts; password stored securely in your OS keychain |
 | 📊 | **Formatted output** — Clean tables with syntax highlighting |
 
 ---
 
 ## 📋 Table of Contents
 
+- [Quick Start](#-quick-start-30-seconds)
 - [Requirements](#-requirements)
 - [Installation](#-installation)
 - [Configuration](#-configuration)
 - [Usage](#-usage)
+- [Commands Reference](#-commands-reference)
 - [Interactive UI](#-interactive-ui)
-- [Direct Query Mode](#-direct-query-mode)
 - [Examples](#-examples)
 - [Project Structure](#-project-structure)
+- [Troubleshooting](#-troubleshooting)
 - [License](#-license)
 
 ---
 
 ## 🛠 Requirements
 
-- **Node.js** 18+
+- **Node.js** 18 or newer
 - **PostgreSQL** server (local or remote)
-- Database credentials
+- Your database credentials
 
 ---
 
 ## 📦 Installation
 
-**Quick install** — Use PgShell from anywhere with a single command:
+**Global install** (run from anywhere):
 
 ```bash
 npm install -g pgshell
 ```
 
-Then run:
-
+Then try:
 ```bash
 pgshell
 # or
-pgshell query "SELECT * FROM users LIMIT 5"
+pgshell query "SELECT 1"
 ```
 
 ---
 
-**From source** (for development or contribution):
+**From source** (for development or contributions):
 
 ```bash
 git clone https://github.com/Foisalislambd/pgshell
@@ -79,22 +108,14 @@ npm install
 npm run build
 ```
 
-Run the interactive UI:
-
+Run it:
 ```bash
 node dist/index.js
-# or
-npx tsx src/index.ts
-```
-
-**Development** (with hot reload):
-
-```bash
+# or with hot reload during development
 npm run dev
 ```
 
-**Local link** (run from source without publishing):
-
+**Use locally without publishing:**
 ```bash
 npm link
 pgshell
@@ -104,7 +125,7 @@ pgshell
 
 ## ⚙️ Configuration
 
-PgShell reads credentials from a `.env` file in the **current directory** where you run `pgshell`. Create it in your project folder before running.
+PgShell reads credentials from a `.env` file in the **directory where you run it**. Put your project or working folder in mind when creating it.
 
 ### Option 1 — Individual variables
 
@@ -134,27 +155,69 @@ PGPORT=5432
 PGDATABASE=yourdatabase
 ```
 
+### Password storage (keychain)
+
+When you connect interactively (without `.env`), PgShell can save your password in your **OS keychain** so you don't have to re-enter it. It uses Windows Credential Manager, macOS Keychain, or Linux Secret Service. Connection profiles (host, port, user) are stored in `~/.pgshell/config.json` — passwords are never saved in plain text.
+
 ### Cloud & SSL
 
-SSL is enabled automatically for `sslmode=require`, `amazonaws.com`, or `supabase.com` in the connection string.
+SSL is enabled automatically when your connection string contains `sslmode=require`, `amazonaws.com`, or `supabase.com`.
 
 ---
 
 ## 🚀 Usage
 
 1. Install: `npm install -g pgshell`
-2. Create a `.env` file in your project directory (see [Configuration](#-configuration))
-3. Run `pgshell` — PgShell connects automatically; otherwise it prompts for connection details
+2. (Optional) Create a `.env` in your project directory — see [Configuration](#-configuration)
+3. Run `pgshell` — if `.env` exists, it connects automatically; otherwise it prompts for connection details
+
+---
+
+## 📂 Commands Reference
+
+All commands support `.env` credentials. If no `.env` is present, PgShell will prompt you when needed.
+
+| Command | Description |
+|---------|-------------|
+| `pgshell` or `pgshell ui` | Launch the interactive menu |
+| `pgshell query "<sql>"` | Run a raw SQL query |
+| `pgshell list` | List all databases with sizes |
+| `pgshell create <name>` | Create a new database |
+| `pgshell drop <name>` | Drop a database (`--yes` to skip confirmation) |
+| `pgshell table [dbName]` | List all tables — specify `dbName` or use `.env` / select interactively |
+| `pgshell delete [dbName]` | Drop all tables in a database — with confirmation |
+
+**Examples:**
+
+```bash
+# Query
+pgshell query "SELECT * FROM users LIMIT 5"
+pgshell query "SELECT COUNT(*) FROM orders"
+
+# Databases
+pgshell list
+pgshell create my_app_db
+pgshell drop old_db --yes
+
+# Tables
+pgshell table                    # Use .env or pick database
+pgshell table my_database        # Direct database name
+
+# Delete all tables (prompts for confirmation)
+pgshell delete my_database
+```
+
+Results appear as formatted tables. On errors, PgShell exits with code 1.
 
 ---
 
 ## 📱 Interactive UI
 
-Run `pgshell` or `pgshell ui` to open the interactive menu. Works with or without `.env`.
+Run `pgshell` or `pgshell ui` to open the interactive menu.
 
-| Menu Option | Description |
-|-------------|-------------|
-| 📂 **List all databases** | See all databases on the server with sizes |
+| Menu Option | What it does |
+|-------------|--------------|
+| 📂 **List all databases** | See all databases with sizes |
 | ➕ **Create database** | Create a new database |
 | 🗑️ **Delete database** | Drop a database (with confirmation) |
 | 🔄 **Switch database** | Reconnect to a different database |
@@ -169,10 +232,10 @@ Run `pgshell` or `pgshell ui` to open the interactive menu. Works with or withou
 | 📊 **Monitor active queries** | Live view of running queries |
 | ❌ **Disconnect & Exit** | Close connection and quit |
 
-### Connection (when no `.env`)
+### When you don't have a `.env`
 
 1. **Localhost** — Enter host, port, user, password, database
-2. **External / URI** — Paste full `postgresql://` connection string
+2. **External / URI** — Paste the full `postgresql://` connection string
 
 ### Tips
 
@@ -180,62 +243,25 @@ Run `pgshell` or `pgshell ui` to open the interactive menu. Works with or withou
 - Blank insert fields → use DEFAULT or NULL
 - Table and database names: letters, numbers, underscores only
 - Dangerous SQL is blocked in table creation
-- When you drop the database you're connected to, PgShell automatically reconnects to `postgres`
-
----
-
-## ⚡ Direct Query Mode
-
-Run a single query without the UI. Requires `.env` credentials.
-
-```bash
-pgshell query "SELECT * FROM users LIMIT 5"
-```
-
-## 📂 Database Commands
-
-Run database operations from the CLI. Requires `.env` credentials.
-
-```bash
-# List all databases
-pgshell list
-
-# Create a database
-pgshell create my_database
-
-# Drop a database (prompts for confirmation)
-pgshell drop my_database
-
-# Drop without confirmation
-pgshell drop my_database --yes
-```
-
-```bash
-# Select
-pgshell query "SELECT * FROM products WHERE price > 100"
-
-# Count
-pgshell query "SELECT COUNT(*) FROM orders"
-
-# Insert
-pgshell query "INSERT INTO logs (message) VALUES ('test')"
-```
-
-Results appear as formatted tables. Exits with code 1 on errors.
+- Dropping the database you're connected to? PgShell reconnects to `postgres` automatically
 
 ---
 
 ## 📝 Examples
 
-**List tables**
-
+**List tables from CLI**
 ```bash
-pgshell
-# → List all tables
+pgshell table
+# or for a specific database
+pgshell table my_database
 ```
 
-**Create table**
+**Quick SQL**
+```bash
+pgshell query "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+```
 
+**Create a table** (interactive)
 ```bash
 pgshell
 # → Create new table
@@ -243,17 +269,10 @@ pgshell
 # Columns: id SERIAL PRIMARY KEY, email VARCHAR(255), created_at TIMESTAMP DEFAULT NOW()
 ```
 
-**Insert row**
-
+**Insert a row** (interactive)
 ```bash
 pgshell
-# → Add new row → select table → enter values
-```
-
-**Quick query**
-
-```bash
-pgshell query "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+# → Add new row → pick table → enter values
 ```
 
 ---
@@ -266,22 +285,24 @@ pgshell/
 │   ├── index.ts                 # CLI entry, Commander
 │   ├── commands/
 │   │   ├── query.ts             # Direct query command
-│   │   └── database.ts          # list/create/drop DB commands
+│   │   ├── database.ts         # list/create/drop DB commands
+│   │   ├── table.ts            # List tables command
+│   │   └── delete.ts           # Drop all tables command
 │   ├── db/
-│   │   ├── client.ts            # Connection pool, pg wrapper
+│   │   ├── client.ts           # Connection pool, pg wrapper
 │   │   ├── connectionResolver.ts # .env + keychain + prompt resolution
-│   │   ├── credentials.ts       # Keychain + ~/.pgshell/config
-│   │   ├── cliCredentials.ts    # Interactive credential prompts
-│   │   └── env.ts               # .env hint printing
+│   │   ├── credentials.ts     # Keychain + ~/.pgshell/config
+│   │   ├── cliCredentials.ts  # Interactive credential prompts
+│   │   └── env.ts             # .env hint printing
 │   ├── ui/
-│   │   ├── mainMenu.ts          # Interactive menu
-│   │   ├── tableRenderer.ts     # cli-table3 output
-│   │   └── fuzzySelect.ts       # Fuzzy search selection
+│   │   ├── mainMenu.ts         # Interactive menu
+│   │   ├── tableRenderer.ts   # cli-table3 output
+│   │   └── fuzzySelect.ts     # Fuzzy search selection
 │   └── utils/
-│       ├── banner.ts            # ASCII banner
-│       ├── sanitizeError.ts     # Error sanitization
-│       ├── spinner.ts           # ora spinner wrapper
-│       └── sqlHighlight.ts      # SQL syntax highlighting
+│       ├── banner.ts           # ASCII banner
+│       ├── sanitizeError.ts   # Error sanitization
+│       ├── spinner.ts         # ora spinner wrapper
+│       └── sqlHighlight.ts    # SQL syntax highlighting
 ├── .env.example
 ├── package.json
 └── README.md
@@ -294,6 +315,20 @@ pgshell/
 | `npm run dev` | Run with hot reload |
 | `npm run build` | Build to `dist/` |
 | `npm start` | Run built output |
+| `npm run typecheck` | TypeScript check without emit |
+
+---
+
+## 🔧 Troubleshooting
+
+**"Missing database credentials"**  
+Create a `.env` in the folder where you run `pgshell`, or run from a terminal so PgShell can prompt you. For non-interactive use (scripts, CI), you must provide credentials via `.env` or `DATABASE_URL`.
+
+**Connection refused**  
+Ensure PostgreSQL is running and the host/port in your config are correct. For remote servers, check firewall and SSH/network access.
+
+**SSL errors**  
+For cloud providers (e.g. AWS RDS, Supabase), SSL is usually required. Use a URL with `sslmode=require` or the provider's recommended params.
 
 ---
 
