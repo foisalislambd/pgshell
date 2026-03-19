@@ -8,6 +8,7 @@ import { dirname, join } from 'path';
 import { runInteractiveUI } from './ui/mainMenu.js';
 import { executeQueryCommand } from './commands/query.js';
 import { executeDbListCommand, executeDbCreateCommand, executeDbDropCommand } from './commands/database.js';
+import { executeTableCommand } from './commands/table.js';
 import chalk from 'chalk';
 import { sanitizeErrorMessage } from './utils/sanitizeError.js';
 
@@ -42,6 +43,18 @@ program
   .action(async () => {
     try {
       await runInteractiveUI();
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+// List tables
+program
+  .command('table')
+  .description('List all tables (uses .env DB if set, otherwise prompts to select database)')
+  .action(async () => {
+    try {
+      await executeTableCommand();
     } catch (error) {
       handleExit(error);
     }
