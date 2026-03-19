@@ -179,7 +179,7 @@ All commands support `.env` credentials. If no `.env` is present, PgShell will p
 
 | Command | Description |
 |---------|-------------|
-| `pgshell` or `pgshell ui` | Launch the interactive menu |
+| `pgshell` or `pgshell ui` or `pgshell view` | Launch the interactive menu |
 | `pgshell query "<sql>"` | Run a raw SQL query |
 | `pgshell list` | List all databases with sizes |
 | `pgshell create <name>` | Create a new database |

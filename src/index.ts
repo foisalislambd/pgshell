@@ -38,16 +38,23 @@ const handleExit = (error: unknown) => {
 };
 
 // Interactive Mode (Default if no args)
+const launchUI = async () => {
+  try {
+    await runInteractiveUI();
+  } catch (error) {
+    handleExit(error);
+  }
+};
+
 program
   .command('ui', { isDefault: true })
   .description('Launch the interactive UI')
-  .action(async () => {
-    try {
-      await runInteractiveUI();
-    } catch (error) {
-      handleExit(error);
-    }
-  });
+  .action(launchUI);
+
+program
+  .command('view')
+  .description('Launch the interactive UI (alias for ui)')
+  .action(launchUI);
 
 // List tables
 program
