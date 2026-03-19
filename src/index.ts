@@ -2,6 +2,9 @@
 
 import { Command } from 'commander';
 import { config } from 'dotenv';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { runInteractiveUI } from './ui/mainMenu.js';
 import { executeQueryCommand } from './commands/query.js';
 import { executeDbListCommand, executeDbCreateCommand, executeDbDropCommand } from './commands/database.js';
@@ -10,12 +13,15 @@ import { sanitizeErrorMessage } from './utils/sanitizeError.js';
 
 config(); // Load .env file automatically
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as { version: string };
+
 const program = new Command();
 
 program
   .name('pgshell')
   .description('All-in-one powerful and human-friendly PostgreSQL CLI Manager')
-  .version('1.1.0');
+  .version(pkg.version);
 
 // Helper to handle any top-level graceful exits
 const handleExit = (error: unknown) => {

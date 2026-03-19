@@ -263,17 +263,25 @@ pgshell query "SELECT table_name FROM information_schema.tables WHERE table_sche
 ```
 pgshell/
 ├── src/
-│   ├── index.ts              # CLI entry, Commander
-│   ├── commands/query.ts     # Direct query command
+│   ├── index.ts                 # CLI entry, Commander
+│   ├── commands/
+│   │   ├── query.ts             # Direct query command
+│   │   └── database.ts          # list/create/drop DB commands
 │   ├── db/
-│   │   ├── client.ts         # Connection pool
-│   │   └── env.ts            # .env credentials
+│   │   ├── client.ts            # Connection pool, pg wrapper
+│   │   ├── connectionResolver.ts # .env + keychain + prompt resolution
+│   │   ├── credentials.ts       # Keychain + ~/.pgshell/config
+│   │   ├── cliCredentials.ts    # Interactive credential prompts
+│   │   └── env.ts               # .env hint printing
 │   ├── ui/
-│   │   ├── mainMenu.ts       # Interactive menu
-│   │   └── tableRenderer.ts  # Result formatting
+│   │   ├── mainMenu.ts          # Interactive menu
+│   │   ├── tableRenderer.ts     # cli-table3 output
+│   │   └── fuzzySelect.ts       # Fuzzy search selection
 │   └── utils/
-│       ├── banner.ts         # ASCII banner
-│       └── sanitizeError.ts  # Error sanitization
+│       ├── banner.ts            # ASCII banner
+│       ├── sanitizeError.ts     # Error sanitization
+│       ├── spinner.ts           # ora spinner wrapper
+│       └── sqlHighlight.ts      # SQL syntax highlighting
 ├── .env.example
 ├── package.json
 └── README.md

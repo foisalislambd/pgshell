@@ -175,6 +175,11 @@ const GET_TABLES_SQL = `
   ORDER BY table_name;
 `;
 
+/** Escape double-quotes in SQL identifiers to prevent injection */
+function escapeSqlIdentifier(name: string): string {
+  return name.replace(/"/g, '""');
+}
+
 async function getPublicTables(): Promise<{ table_name: string }[]> {
   const result = await dbQuery(GET_TABLES_SQL);
   return result.rows;
@@ -430,7 +435,8 @@ async function handleViewTable() {
     validate: (val) => !isNaN(Number(val)) ? true : 'Please enter a valid number'
   });
 
-  const result = await dbQuery(`SELECT * FROM "${tableName}" LIMIT $1`, [Number(limit)]);
+  const escapedTable = escapeSqlIdentifier(tableName);
+  const result = await dbQuery(`SELECT * FROM "${escapedTable}" LIMIT $1`, [Number(limit)]);
   console.log(chalk.cyan(`\nShowing up to ${limit} rows from "${tableName}":`));
   renderTable(result.rows);
 }
@@ -491,11 +497,12 @@ async function handleInsertRow() {
     return;
   }
 
-  const cols = Object.keys(rowData).map(c => `"${c}"`).join(', ');
+  const escapedTable = escapeSqlIdentifier(tableName);
+  const cols = Object.keys(rowData).map((c) => `"${escapeSqlIdentifier(c)}"`).join(', ');
   const placeholders = Object.keys(rowData).map((_, i) => `$${i + 1}`).join(', ');
   const values = Object.values(rowData);
 
-  const sql = `INSERT INTO "${tableName}" (${cols}) VALUES (${placeholders}) RETURNING *;`;
+  const sql = `INSERT INTO "${escapedTable}" (${cols}) VALUES (${placeholders}) RETURNING *;`;
   
   try {
     const result = await dbQuery(sql, values);
@@ -535,7 +542,8 @@ async function handleCreateTable() {
     validate: validateColumnsDef
   });
 
-  const sql = `CREATE TABLE "${tableName}" (${columns});`;
+  const escapedTable = escapeSqlIdentifier(tableName);
+  const sql = `CREATE TABLE "${escapedTable}" (${columns});`;
   
   try {
     await dbQuery(sql);
@@ -562,7 +570,8 @@ async function handleDropSpecificTable() {
   });
 
   if (isSure) {
-    await dbQuery(`DROP TABLE "${tableName}" CASCADE;`);
+    const escapedTable = escapeSqlIdentifier(tableName);
+    await dbQuery(`DROP TABLE "${escapedTable}" CASCADE;`);
     console.log(chalk.green(`\n✓ Table "${tableName}" dropped successfully!`));
   } else {
     console.log(chalk.gray('\nOperation cancelled.'));
@@ -583,7 +592,7 @@ async function handleDropAllTables() {
   });
 
   if (isSure) {
-    const tableNames = tables.map(r => `"${r.table_name}"`).join(', ');
+    const tableNames = tables.map((r) => `"${escapeSqlIdentifier(r.table_name)}"`).join(', ');
     await dbQuery(`DROP TABLE ${tableNames} CASCADE;`);
     console.log(chalk.green(`\n✓ All tables dropped successfully!`));
   } else {

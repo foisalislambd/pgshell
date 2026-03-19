@@ -1,4 +1,3 @@
-import { config } from 'dotenv';
 import {
   loadStoredProfile,
   saveStoredProfile,
@@ -6,8 +5,6 @@ import {
   setStoredPassword,
   type StoredConnectionProfile
 } from './credentials.js';
-
-config();
 
 export interface ResolvedConnection {
   connectionString: string;
