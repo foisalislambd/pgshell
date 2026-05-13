@@ -47,6 +47,11 @@ export async function executeDbCreateCommand(name: string) {
     process.exit(1);
   }
 
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
+    console.error(chalk.red('\nError: Database name must start with a letter or underscore and contain only letters, numbers, and underscores.\n'));
+    process.exit(1);
+  }
+
   const escaped = dbName.replace(/"/g, '""');
 
   // Must connect to an existing DB (postgres) to run CREATE DATABASE
@@ -104,6 +109,11 @@ export async function executeDbDropCommand(name: string, force = false) {
   const dbName = name.trim();
   if (!dbName) {
     console.error(chalk.red('\nError: Database name cannot be empty.\n'));
+    process.exit(1);
+  }
+
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
+    console.error(chalk.red('\nError: Database name must start with a letter or underscore and contain only letters, numbers, and underscores.\n'));
     process.exit(1);
   }
 

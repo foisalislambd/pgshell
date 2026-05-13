@@ -37,9 +37,10 @@ export function connect(config: DBConnectionConfig): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       try {
         storedConnectionString = config.connectionString;
+        const needsSSL = /sslmode=(require|verify-ca|verify-full)|\.amazonaws\.com|\.supabase\.com|\.neon\.tech|\.render\.com|\.fly\.io|\.railway\.app/i.test(config.connectionString);
         pool = new pg.Pool({
           connectionString: config.connectionString,
-          ssl: config.connectionString.includes('sslmode=require') || config.connectionString.includes('amazonaws.com') || config.connectionString.includes('supabase.com') ? { rejectUnauthorized: false } : undefined
+          ssl: needsSSL ? { rejectUnauthorized: false } : undefined
         });
 
         pool
@@ -82,9 +83,10 @@ export async function runOnDatabase<T>(
 ): Promise<T> {
   const adminUrl = getAdminConnectionString(targetDb);
   if (!adminUrl) throw new Error('Not connected. Cannot run admin operation.');
+  const needsSSL = /sslmode=(require|verify-ca|verify-full)|\.amazonaws\.com|\.supabase\.com|\.neon\.tech|\.render\.com|\.fly\.io|\.railway\.app/i.test(adminUrl);
   const adminPool = new pg.Pool({
     connectionString: adminUrl,
-    ssl: adminUrl.includes('sslmode=require') || adminUrl.includes('amazonaws.com') || adminUrl.includes('supabase.com') ? { rejectUnauthorized: false } : undefined
+    ssl: needsSSL ? { rejectUnauthorized: false } : undefined
   });
   try {
     return await fn(adminPool);

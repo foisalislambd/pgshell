@@ -22,8 +22,9 @@ function buildConnectionString(
   database: string,
   queryString?: string | null
 ): string {
+  const encodedUser = encodeURIComponent(user);
   const encodedPass = password ? encodeURIComponent(password) : '';
-  const auth = encodedPass ? `${user}:${encodedPass}` : user;
+  const auth = encodedPass ? `${encodedUser}:${encodedPass}` : encodedUser;
   let url = `postgresql://${auth}@${host}:${port}/${database}`;
   if (queryString && queryString.length > 0) {
     url += (queryString.startsWith('?') ? '' : '?') + queryString;
