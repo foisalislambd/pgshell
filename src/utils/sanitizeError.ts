@@ -1,3 +1,13 @@
+/** True when PostgreSQL reports the target database does not exist (e.g. wrong DB_NAME in .env). */
+export function isDatabaseDoesNotExistError(error: unknown): boolean {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const code = (error as { code?: string }).code;
+    if (code === '3D000') return true;
+  }
+  const msg = error instanceof Error ? error.message : String(error);
+  return /database\s+"[^"]*"\s+does not exist/i.test(msg);
+}
+
 /**
  * Removes sensitive data (passwords, connection strings) from error messages
  * and translates common PostgreSQL errors into human-friendly messages.

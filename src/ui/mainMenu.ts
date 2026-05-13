@@ -7,7 +7,7 @@ import { resolveConnection, replaceDatabaseInUrl, getConnectionStringForDb } fro
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { loadStoredProfile, saveStoredProfile, setStoredPassword } from '../db/credentials.js';
 import { printBanner } from '../utils/banner.js';
-import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
+import { isDatabaseDoesNotExistError, sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
 
@@ -34,16 +34,77 @@ export async function runInteractiveUI() {
       }
       connectionString = resolved.connectionString;
 
-      await withSpinner(
-        'Connecting...',
-        async () => {
-          await connect({ connectionString });
-          connected = true;
-        },
-        { successMessage: chalk.green('Connected!\n') }
-      );
+      /** When false, we already use the .env target DB (or user created it). When true, show DB picker. */
+      let useDatabasePicker = !resolved.targetDatabase;
 
-      if (!resolved.targetDatabase) {
+      try {
+        await withSpinner(
+          'Connecting...',
+          async () => {
+            await connect({ connectionString });
+            connected = true;
+          },
+          { successMessage: chalk.green('Connected!\n') }
+        );
+      } catch (connectErr: unknown) {
+        const ce = connectErr as Error & { name?: string };
+        if (ce?.name === 'ExitPromptError' || ce?.message?.includes('SIGINT')) {
+          throw connectErr;
+        }
+
+        const missingFromEnv =
+          resolved.fromEnv &&
+          Boolean(resolved.targetDatabase) &&
+          isDatabaseDoesNotExistError(connectErr);
+
+        if (!missingFromEnv) {
+          throw connectErr;
+        }
+
+        if (!process.stdin.isTTY) {
+          console.log(
+            chalk.red(
+              `\nDatabase "${resolved.targetDatabase}" does not exist. Open a terminal to create it interactively, or run:\n  pgshell create ${resolved.targetDatabase}\n`
+            )
+          );
+          process.exit(1);
+        }
+
+        const createIt = await confirm({
+          message: `Database "${resolved.targetDatabase}" does not exist on the server. Create it now?`,
+          default: true
+        });
+
+        if (createIt) {
+          const adminUrl = replaceDatabaseInUrl(connectionString, 'postgres');
+          const dbName = resolved.targetDatabase!;
+          const escaped = dbName.replace(/"/g, '""');
+          await withSpinner(
+            `Creating database "${dbName}"...`,
+            async () => {
+              await connect({ connectionString: adminUrl });
+              await dbQuery(`CREATE DATABASE "${escaped}"`);
+              await disconnect();
+              await connect({ connectionString });
+            },
+            { successMessage: chalk.green(`Database "${dbName}" created.\n`) }
+          );
+          connected = true;
+        } else {
+          const adminUrl = replaceDatabaseInUrl(connectionString, 'postgres');
+          await withSpinner(
+            'Connecting to postgres...',
+            async () => {
+              await connect({ connectionString: adminUrl });
+            },
+            { successMessage: chalk.green('Connected to postgres.\n') }
+          );
+          connected = true;
+          useDatabasePicker = true;
+        }
+      }
+
+      if (useDatabasePicker) {
         const result = await dbQuery(GET_DATABASES_SQL);
         const databases = result.rows as { Database: string; Size: string }[];
         if (databases.length === 0) {

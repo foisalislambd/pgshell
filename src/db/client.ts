@@ -26,26 +26,35 @@ export function getConnectionString(): string | null {
 }
 
 export function connect(config: DBConnectionConfig): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      storedConnectionString = config.connectionString;
-      pool = new pg.Pool({
-        connectionString: config.connectionString,
-        ssl: config.connectionString.includes('sslmode=require') || config.connectionString.includes('amazonaws.com') || config.connectionString.includes('supabase.com') ? { rejectUnauthorized: false } : undefined
-      });
-      
-      // Test the connection securely
-      pool.query('SELECT 1')
-        .then(() => resolve())
-        .catch((err) => {
-          pool = null;
-          storedConnectionString = null;
-          reject(err);
-        });
-    } catch (err) {
-      reject(err);
+  return (async () => {
+    if (pool) {
+      const previous = pool;
+      pool = null;
+      storedConnectionString = null;
+      await previous.end();
     }
-  });
+
+    return new Promise<void>((resolve, reject) => {
+      try {
+        storedConnectionString = config.connectionString;
+        pool = new pg.Pool({
+          connectionString: config.connectionString,
+          ssl: config.connectionString.includes('sslmode=require') || config.connectionString.includes('amazonaws.com') || config.connectionString.includes('supabase.com') ? { rejectUnauthorized: false } : undefined
+        });
+
+        pool
+          .query('SELECT 1')
+          .then(() => resolve())
+          .catch((err) => {
+            pool = null;
+            storedConnectionString = null;
+            reject(err);
+          });
+      } catch (err) {
+        reject(err);
+      }
+    });
+  })();
 }
 
 export function disconnect(): Promise<void> {
