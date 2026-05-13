@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://foisalislambd.github.io/pgshell/sitemap.xml

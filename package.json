@@ -27,7 +27,7 @@
     "type": "git",
     "url": "git+https://github.com/Foisalislambd/pgshell.git"
   },
-  "homepage": "https://github.com/Foisalislambd/pgshell#readme",
+  "homepage": "https://foisalislambd.github.io/pgshell/",
   "dependencies": {
     "@inquirer/prompts": "^8.4.3",
     "chalk": "^5.6.2",

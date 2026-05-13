@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PgShell — PostgreSQL CLI &amp; interactive terminal companion</title>
+  <meta name="description" content="PgShell is a human-friendly PostgreSQL CLI: interactive menus, raw SQL, database and table management, keychain passwords, and formatted output. Node.js 18+.">
+  <meta name="keywords" content="PostgreSQL, CLI, TUI, database, pgshell, npm, terminal, SQL">
+  <meta name="author" content="PgShell">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://foisalislambd.github.io/pgshell/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&display=swap" rel="stylesheet">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="PgShell — PostgreSQL CLI &amp; interactive companion">
+  <meta property="og:description" content="Explore, modify, and monitor PostgreSQL from the terminal. Menus, commands, secure credentials, clean tables.">
+  <meta property="og:url" content="https://foisalislambd.github.io/pgshell/">
+  <meta property="og:site_name" content="PgShell Docs">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="PgShell — PostgreSQL CLI">
+  <meta name="twitter:description" content="Human-friendly PostgreSQL terminal tool: interactive UI + one-shot commands.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23336191'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='14' font-family='system-ui'%3EP%3C/text%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: { pg: { DEFAULT: '#336791', light: '#4a90c2' } }
+        }
+      }
+    };
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PgShell",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "description": "Terminal-based PostgreSQL companion with interactive menus and CLI commands.",
+    "url": "https://foisalislambd.github.io/pgshell/",
+    "downloadUrl": "https://www.npmjs.com/package/pgshell",
+    "softwareVersion": "1.0.7",
+    "license": "https://opensource.org/licenses/ISC",
+    "author": { "@type": "Organization", "name": "PgShell" },
+    "keywords": "postgresql, cli, database, node"
+  }
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+
+  <header class="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <a href="./" class="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-pg text-sm font-bold text-white">P</span>
+        <span>PgShell</span>
+      </a>
+      <nav class="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <a href="./" class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900">Home</a>
+        <a href="./getting-started.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Getting started</a>
+        <a href="./reference.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Reference</a>
+        <a href="./troubleshooting.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Troubleshooting</a>
+        <a href="https://www.npmjs.com/package/pgshell" class="ml-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700" rel="noopener noreferrer">npm</a>
+      </nav>
+      <button type="button" id="nav-toggle" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 md:hidden" aria-controls="nav-panel" aria-expanded="false" aria-label="Open menu">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="nav-panel" class="hidden border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+      <div class="flex flex-col gap-1">
+        <a href="./" class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium">Home</a>
+        <a href="./getting-started.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Getting started</a>
+        <a href="./reference.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Reference</a>
+        <a href="./troubleshooting.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Troubleshooting</a>
+        <a href="https://www.npmjs.com/package/pgshell" class="mt-2 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white" rel="noopener noreferrer">View on npm</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="relative overflow-hidden bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 text-white">
+      <div class="pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" style="background-image: radial-gradient(circle at 20% 20%, rgba(16,185,129,0.25), transparent 40%), radial-gradient(circle at 80% 60%, rgba(51,103,145,0.35), transparent 45%);"></div>
+      <div class="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:py-28">
+        <p class="text-sm font-medium uppercase tracking-wider text-emerald-400/90">Documentation</p>
+        <h1 class="mt-3 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">Your friendly PostgreSQL companion for the terminal</h1>
+        <p class="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">Explore, modify, and monitor PostgreSQL with guided menus or one-line commands. No separate GUI—just Node.js, your shell, and clear, formatted output.</p>
+        <div class="mt-10 flex flex-wrap gap-3">
+          <a href="./getting-started.html" class="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-base font-semibold text-slate-900 shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400">Get started in 30 seconds</a>
+          <a href="./reference.html" class="inline-flex items-center justify-center rounded-xl border border-slate-600 bg-slate-800/50 px-5 py-3 text-base font-semibold text-white backdrop-blur hover:bg-slate-800">Commands &amp; UI</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20" aria-labelledby="quick-heading">
+      <h2 id="quick-heading" class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Quick start</h2>
+      <p class="mt-3 max-w-2xl text-slate-600">Install globally, add a <code class="rounded bg-slate-200 px-1.5 py-0.5 text-sm font-mono text-slate-800">.env</code> (or use prompts), then run <code class="rounded bg-slate-200 px-1.5 py-0.5 text-sm font-mono text-slate-800">pgshell</code>.</p>
+      <ol class="mt-8 space-y-6">
+        <li class="flex gap-4">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">1</span>
+          <div>
+            <h3 class="font-semibold text-slate-900">Install</h3>
+            <pre class="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-sm text-emerald-100"><code>npm install -g pgshell</code></pre>
+          </div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">2</span>
+          <div>
+            <h3 class="font-semibold text-slate-900">Configure (optional)</h3>
+            <p class="mt-1 text-slate-600">Create a <code class="font-mono text-sm">.env</code> where you run the command, or paste a <code class="font-mono text-sm">DATABASE_URL</code> when prompted.</p>
+            <pre class="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-sm text-emerald-100"><code>DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_NAME=your_database</code></pre>
+          </div>
+        </li>
+        <li class="flex gap-4">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800">3</span>
+          <div>
+            <h3 class="font-semibold text-slate-900">Run</h3>
+            <pre class="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-sm text-emerald-100"><code>pgshell</code></pre>
+            <p class="mt-2 text-slate-600">Opens the interactive menu. Without <code class="font-mono text-sm">.env</code>, you can store the password in your OS keychain.</p>
+          </div>
+        </li>
+      </ol>
+      <p class="mt-8"><a href="./getting-started.html" class="font-semibold text-emerald-700 hover:text-emerald-800">Full installation and configuration →</a></p>
+    </section>
+
+    <section class="border-y border-slate-200 bg-white py-14 sm:py-20" aria-labelledby="features-heading">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6">
+        <h2 id="features-heading" class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Why PgShell</h2>
+        <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <article class="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 shadow-sm">
+            <h3 class="font-semibold text-slate-900">Interactive UI</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">Guided menus for databases, tables, inserts, structure, custom SQL, and live query monitoring.</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 shadow-sm">
+            <h3 class="font-semibold text-slate-900">CLI commands</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">One-liners like <code class="font-mono text-xs text-slate-800">pgshell query "SELECT …"</code> for scripts and quick checks.</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 shadow-sm">
+            <h3 class="font-semibold text-slate-900">Flexible auth</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600"><code class="font-mono text-xs">.env</code>, URI, standard <code class="font-mono text-xs">PG*</code> vars, or prompts—with optional OS keychain storage.</p>
+          </article>
+          <article class="rounded-2xl border border-slate-200 bg-slate-50/80 p-6 shadow-sm">
+            <h3 class="font-semibold text-slate-900">Readable output</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">Tables and SQL highlighting designed for humans in a terminal—or read the same flows in this docs site.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16" aria-labelledby="learn-heading">
+      <h2 id="learn-heading" class="text-2xl font-bold tracking-tight text-slate-900">Learn more</h2>
+      <ul class="mt-6 grid gap-4 sm:grid-cols-2">
+        <li><a href="./getting-started.html" class="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"><span class="font-medium text-slate-900">Getting started</span><span class="text-slate-400 group-hover:text-emerald-600" aria-hidden="true">→</span></a></li>
+        <li><a href="./reference.html" class="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"><span class="font-medium text-slate-900">Commands &amp; interactive UI</span><span class="text-slate-400 group-hover:text-emerald-600" aria-hidden="true">→</span></a></li>
+        <li><a href="./troubleshooting.html" class="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md"><span class="font-medium text-slate-900">Troubleshooting</span><span class="text-slate-400 group-hover:text-emerald-600" aria-hidden="true">→</span></a></li>
+        <li><a href="https://github.com/Foisalislambd/pgshell" class="group flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-emerald-300 hover:shadow-md" rel="noopener noreferrer"><span class="font-medium text-slate-900">Source on GitHub</span><span class="text-slate-400 group-hover:text-emerald-600" aria-hidden="true">↗</span></a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-slate-100/80">
+    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <p class="text-sm text-slate-600"><span class="font-medium text-slate-800">PgShell</span> — ISC License. Docs for the <a href="https://www.npmjs.com/package/pgshell" class="text-emerald-700 hover:underline" rel="noopener noreferrer">npm package</a>.</p>
+      <p class="text-sm text-slate-500">PostgreSQL is a trademark of the PostgreSQL Community Association.</p>
+    </div>
+  </footer>
+  <script src="./assets/site.js" defer></script>
+</body>
+</html>

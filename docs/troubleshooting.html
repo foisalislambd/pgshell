@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Troubleshooting — PgShell PostgreSQL CLI</title>
+  <meta name="description" content="Fix missing credentials, connection refused, and SSL issues when using PgShell with PostgreSQL locally or on AWS RDS, Supabase, and other hosts.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://foisalislambd.github.io/pgshell/troubleshooting.html">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400..700;1,14..32,400..700&display=swap" rel="stylesheet">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="PgShell troubleshooting">
+  <meta property="og:description" content="Common errors and fixes for PgShell.">
+  <meta property="og:url" content="https://foisalislambd.github.io/pgshell/troubleshooting.html">
+  <meta name="twitter:card" content="summary">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23336191'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='14' font-family='system-ui'%3EP%3C/text%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }, colors: { pg: { DEFAULT: '#336791' } } } } };
+  </script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white">Skip to content</a>
+
+  <header class="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <a href="./" class="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-pg text-sm font-bold text-white">P</span>
+        <span>PgShell</span>
+      </a>
+      <nav class="hidden items-center gap-1 md:flex" aria-label="Primary">
+        <a href="./" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Home</a>
+        <a href="./getting-started.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Getting started</a>
+        <a href="./reference.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900">Reference</a>
+        <a href="./troubleshooting.html" class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-900">Troubleshooting</a>
+        <a href="https://www.npmjs.com/package/pgshell" class="ml-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700" rel="noopener noreferrer">npm</a>
+      </nav>
+      <button type="button" id="nav-toggle" class="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 md:hidden" aria-controls="nav-panel" aria-expanded="false" aria-label="Open menu">
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+    <div id="nav-panel" class="hidden border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+      <div class="flex flex-col gap-1">
+        <a href="./" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Home</a>
+        <a href="./getting-started.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Getting started</a>
+        <a href="./reference.html" class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Reference</a>
+        <a href="./troubleshooting.html" class="rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium">Troubleshooting</a>
+        <a href="https://www.npmjs.com/package/pgshell" class="mt-2 rounded-lg bg-emerald-600 px-3 py-2 text-center text-sm font-semibold text-white" rel="noopener noreferrer">View on npm</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+    <nav class="text-sm text-slate-500" aria-label="Breadcrumb">
+      <ol class="flex flex-wrap items-center gap-2">
+        <li><a href="./" class="hover:text-emerald-700">Home</a></li>
+        <li aria-hidden="true">/</li>
+        <li class="font-medium text-slate-800">Troubleshooting</li>
+      </ol>
+    </nav>
+    <h1 class="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Troubleshooting</h1>
+    <p class="mt-4 max-w-3xl text-lg text-slate-600">Short answers to the most common setup and connection problems. If you are stuck, double-check credentials, network path, and SSL settings for hosted PostgreSQL.</p>
+
+    <div class="mt-12 space-y-6">
+      <article class="rounded-2xl border border-amber-200 bg-amber-50/80 p-6 shadow-sm sm:p-8">
+        <h2 class="text-lg font-bold text-amber-950">“Missing database credentials”</h2>
+        <p class="mt-3 text-slate-700">Add a <code class="rounded bg-white px-1.5 py-0.5 font-mono text-sm shadow-sm">.env</code> in the folder from which you run <code class="font-mono text-sm">pgshell</code>, set <code class="font-mono text-sm">DATABASE_URL</code>, or run in an interactive terminal so PgShell can prompt you. For CI or scripts, you must provide environment variables or a connection URL—prompts are not available.</p>
+      </article>
+
+      <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 class="text-lg font-bold text-slate-900">Connection refused</h2>
+        <p class="mt-3 text-slate-600">Confirm PostgreSQL is running and listening on the host and port in your configuration. For remote servers, verify security groups, firewalls, VPNs, and that your IP is allowed.</p>
+      </article>
+
+      <article class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <h2 class="text-lg font-bold text-slate-900">SSL errors</h2>
+        <p class="mt-3 text-slate-600">Managed services such as AWS RDS or Supabase usually require TLS. Use a URL that includes <code class="font-mono text-sm">sslmode=require</code> or follow your provider’s connection string template. PgShell enables SSL automatically for some common cloud host patterns.</p>
+      </article>
+    </div>
+
+    <p class="mt-12"><a href="./getting-started.html" class="font-semibold text-emerald-700 hover:underline">← Back to getting started</a></p>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-slate-100/80">
+    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-10 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <p class="text-sm text-slate-600"><a href="./" class="font-medium text-slate-800 hover:underline">PgShell</a> documentation</p>
+      <p class="text-sm text-slate-500"><a href="https://github.com/Foisalislambd/pgshell/issues" class="text-emerald-700 hover:underline" rel="noopener noreferrer">Report an issue</a></p>
+    </div>
+  </footer>
+  <script src="./assets/site.js" defer></script>
+</body>
+</html>
