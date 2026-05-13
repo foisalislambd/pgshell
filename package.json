@@ -29,22 +29,22 @@
   },
   "homepage": "https://github.com/Foisalislambd/pgshell#readme",
   "dependencies": {
-    "@inquirer/prompts": "^8.3.0",
+    "@inquirer/prompts": "^8.4.3",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
     "cross-keychain": "^1.1.0",
-    "dotenv": "^17.3.1",
+    "dotenv": "^17.4.2",
     "fzf": "^0.5.2",
     "gradient-string": "^3.0.0",
-    "ora": "^9.3.0",
-    "pg": "^8.19.0"
+    "ora": "^9.4.0",
+    "pg": "^8.20.0"
   },
   "devDependencies": {
-    "@types/node": "^25.3.3",
-    "@types/pg": "^8.18.0",
+    "@types/node": "^25.7.0",
+    "@types/pg": "^8.20.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }
