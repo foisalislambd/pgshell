@@ -46,18 +46,18 @@ function getEnvConfig(): {
     try {
       const url = new URL(process.env.DATABASE_URL);
       const dbPath = url.pathname.slice(1).split('?')[0];
-      const dbName = dbPath && dbPath.length > 0 ? dbPath : null;
+      const dbName = dbPath && dbPath.length > 0 ? decodeURIComponent(dbPath) : null;
       const queryString = url.search ? url.search.slice(1) : null;
       return {
         host: url.hostname,
         port: url.port || '5432',
-        user: url.username || 'postgres',
+        user: decodeURIComponent(url.username || 'postgres'),
         password: url.password ? decodeURIComponent(url.password) : null,
         dbName: dbName || null,
         queryString
       };
     } catch {
-      return null;
+      /* fall through to individual env vars */
     }
   }
 
@@ -120,6 +120,7 @@ export async function resolveConnection(
     user: string;
     password: string;
     database?: string;
+    queryString?: string;
   }>
 ): Promise<ResolvedConnection> {
   const envConfig = getEnvConfig();
@@ -129,7 +130,9 @@ export async function resolveConnection(
     const profile: StoredConnectionProfile = {
       host: envConfig.host,
       port: envConfig.port,
-      user: envConfig.user
+      user: envConfig.user,
+      ...(envConfig.dbName ? { database: envConfig.dbName } : {}),
+      ...(envConfig.queryString ? { queryString: envConfig.queryString } : {})
     };
 
     if (!password) {
@@ -170,17 +173,21 @@ export async function resolveConnection(
   const storedProfile = loadStoredProfile();
   let profile = storedProfile;
   let password = storedProfile ? await getStoredPassword(storedProfile) : null;
-  let targetDb: string | null = null;
+  let targetDb: string | null = storedProfile?.database ?? null;
+  let queryString: string | null = storedProfile?.queryString ?? null;
 
   if (!profile || !password) {
     const prompted = await promptForCredentials(storedProfile ?? undefined);
     profile = {
       host: prompted.host,
       port: prompted.port,
-      user: prompted.user
+      user: prompted.user,
+      ...(prompted.database ? { database: prompted.database } : {}),
+      ...(prompted.queryString ? { queryString: prompted.queryString } : {})
     };
     password = prompted.password;
     targetDb = prompted.database || null;
+    queryString = prompted.queryString || null;
     await setStoredPassword(profile, password);
     saveStoredProfile(profile);
   }
@@ -190,7 +197,8 @@ export async function resolveConnection(
     profile.port,
     profile.user,
     password!,
-    targetDb || 'postgres'
+    targetDb || 'postgres',
+    queryString
   );
 
   return {

@@ -4,7 +4,7 @@ import type { StoredConnectionProfile } from './credentials.js';
 
 export async function promptForCredentials(
   existing?: StoredConnectionProfile
-): Promise<{ host: string; port: string; user: string; password: string; database?: string }> {
+): Promise<{ host: string; port: string; user: string; password: string; database?: string; queryString?: string }> {
   if (!process.stdin.isTTY) {
     throw new Error('Cannot prompt for credentials: not running in an interactive terminal (no TTY). Create a .env file or run from a terminal.');
   }
@@ -25,20 +25,33 @@ export async function promptForCredentials(
     const uri = await input({
       message: chalk.bold('Enter your Connection String:'),
       validate: (val) =>
-        val.startsWith('postgres') ? true : chalk.red('Must be a valid Postgres URI (postgres://... or postgresql://...)')
+        /^postgres(ql)?:\/\//i.test(val.trim())
+          ? true
+          : chalk.red('Must be a valid Postgres URI (postgres://... or postgresql://...)')
     });
     try {
       const url = new URL(uri);
       const pass = url.password ? decodeURIComponent(url.password) : '';
       const dbPath = url.pathname.slice(1).split('?')[0];
-      const result: { host: string; port: string; user: string; password: string; database?: string } = {
+      const queryString = url.search ? url.search.slice(1) : undefined;
+      const result: {
+        host: string;
+        port: string;
+        user: string;
+        password: string;
+        database?: string;
+        queryString?: string;
+      } = {
         host: url.hostname,
         port: url.port || '5432',
-        user: url.username || 'postgres',
+        user: decodeURIComponent(url.username || 'postgres'),
         password: pass
       };
       if (dbPath) {
-        result.database = dbPath;
+        result.database = decodeURIComponent(dbPath);
+      }
+      if (queryString) {
+        result.queryString = queryString;
       }
       return result;
     } catch {

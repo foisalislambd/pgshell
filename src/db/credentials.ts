@@ -14,6 +14,10 @@ export interface StoredConnectionProfile {
   host: string;
   port: string;
   user: string;
+  /** Default database from connection string or interactive setup */
+  database?: string;
+  /** Query string from DATABASE_URL (e.g. sslmode=require) */
+  queryString?: string;
 }
 
 /** Unique key for keychain: one password per host+port+user. Uses only allowed chars: alphanumeric, ., _, @, - */

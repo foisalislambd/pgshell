@@ -19,7 +19,7 @@ export function highlightSql(sqlText: string): string {
       (m) => chalk.magentaBright(m)
     )
     // Constants (TRUE/FALSE/NULL)
-    .replace(/\b(NULL|TRUE|FALSE)\b/gi, chalk.magenta.bold('$1'))
+    .replace(/\b(NULL|TRUE|FALSE)\b/gi, (m) => chalk.magenta.bold(m))
     // Strings
     .replace(/'([^']*)'/g, chalk.greenBright("'$1'"))
     // Numbers

@@ -43,6 +43,15 @@ export async function executeTableCommand(dbNameArg?: string) {
       targetDbName = resolved.targetDatabase;
       console.log(chalk.gray(`Using .env → connecting to "${targetDbName}"\n`));
     } else {
+      if (!process.stdin.isTTY) {
+        console.error(
+          chalk.red(
+            '\nError: No target database configured. Set DB_NAME in .env, pass a database name, or run from an interactive terminal.\n'
+          )
+        );
+        printEnvHint();
+        process.exit(1);
+      }
       connectionString = replaceDatabaseInUrl(connectionString, 'postgres');
       await connect({ connectionString });
 

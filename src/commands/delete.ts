@@ -65,7 +65,15 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
       connectionString = replaceDatabaseInUrl(resolved.connectionString, targetDbName);
       console.log(chalk.gray(`Using .env → target database: "${targetDbName}"\n`));
     } else {
-      // No .env database - show selection
+      if (!process.stdin.isTTY) {
+        console.error(
+          chalk.red(
+            '\nError: No target database configured. Set DB_NAME in .env, pass a database name, or run from an interactive terminal.\n'
+          )
+        );
+        printEnvHint();
+        process.exit(1);
+      }
       connectionString = replaceDatabaseInUrl(connectionString, 'postgres');
       await connect({ connectionString });
 

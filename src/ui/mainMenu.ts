@@ -5,7 +5,7 @@ import { renderTable } from './tableRenderer.js';
 import { fuzzySelect } from './fuzzySelect.js';
 import { resolveConnection, replaceDatabaseInUrl, getConnectionStringForDb } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
-import { loadStoredProfile, saveStoredProfile, setStoredPassword } from '../db/credentials.js';
+import { loadStoredProfile, saveStoredProfile, setStoredPassword, type StoredConnectionProfile } from '../db/credentials.js';
 import { printBanner } from '../utils/banner.js';
 import { isDatabaseDoesNotExistError, sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
@@ -270,7 +270,9 @@ async function handleCreateDatabase() {
 
   const escaped = trimmed.replace(/"/g, '""');
   try {
-    await dbQuery(`CREATE DATABASE "${escaped}"`);
+    await runOnDatabase('postgres', async (adminPool) => {
+      await adminPool.query(`CREATE DATABASE "${escaped}"`);
+    });
     console.log(chalk.green(`\n✓ Database "${trimmed}" created! You can switch to it from the menu anytime.`));
   } catch (err: unknown) {
     console.log(chalk.red(`\nFailed to create database: ${sanitizeErrorMessage(err)}`));
@@ -390,9 +392,6 @@ async function handleResetCredentials() {
 
   try {
     const prompted = await promptForCredentials(existingProfile ?? undefined);
-    const profile = { host: prompted.host, port: prompted.port, user: prompted.user };
-    await setStoredPassword(profile, prompted.password);
-    saveStoredProfile(profile);
 
     const currentDb = await getCurrentDatabase();
     const db = currentDb || 'postgres';
@@ -405,6 +404,16 @@ async function handleResetCredentials() {
         /* ignore */
       }
     }
+
+    const profile: StoredConnectionProfile = {
+      host: prompted.host,
+      port: prompted.port,
+      user: prompted.user,
+      ...(prompted.database ? { database: prompted.database } : currentDb ? { database: currentDb } : {}),
+      ...(prompted.queryString ? { queryString: prompted.queryString } : queryString ? { queryString } : {})
+    };
+    await setStoredPassword(profile, prompted.password);
+    saveStoredProfile(profile);
 
     const newConnStr = getConnectionStringForDb(
       prompted.host,

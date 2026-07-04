@@ -46,9 +46,13 @@ export function connect(config: DBConnectionConfig): Promise<void> {
         pool
           .query('SELECT 1')
           .then(() => resolve())
-          .catch((err) => {
+          .catch(async (err) => {
+            const failedPool = pool;
             pool = null;
             storedConnectionString = null;
+            if (failedPool) {
+              await failedPool.end().catch(() => undefined);
+            }
             reject(err);
           });
       } catch (err) {
