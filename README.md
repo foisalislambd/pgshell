@@ -241,7 +241,7 @@ Run `pgshell` or `pgshell ui` to open the interactive menu.
 
 - **Ctrl+C** — Safe exit
 - Blank insert fields → use DEFAULT or NULL
-- Table and database names: letters, numbers, underscores only
+- Table and database names: letters, numbers, underscores, or hyphens
 - Dangerous SQL is blocked in table creation
 - Dropping the database you're connected to? PgShell reconnects to `postgres` automatically
 
@@ -302,7 +302,9 @@ pgshell/
 │       ├── banner.ts           # ASCII banner
 │       ├── sanitizeError.ts   # Error sanitization
 │       ├── spinner.ts         # ora spinner wrapper
-│       └── sqlHighlight.ts    # SQL syntax highlighting
+│       ├── sqlHighlight.ts    # SQL syntax highlighting
+│       ├── sqlIdent.ts        # Identifier escape/validation
+│       └── promptConfirm.ts   # y/N CLI confirmation
 ├── .env.example
 ├── package.json
 └── README.md

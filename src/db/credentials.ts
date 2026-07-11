@@ -6,7 +6,7 @@ import { homedir } from 'os';
 const PGSHELL_SERVICE = 'pgshell';
 
 /** Config file path: ~/.pgshell/config.json (stores host, port, user - NOT password) */
-export function getConfigPath(): string {
+function getConfigPath(): string {
   return path.join(homedir(), '.pgshell', 'config.json');
 }
 

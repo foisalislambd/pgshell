@@ -66,7 +66,8 @@ function getEnvConfig(): {
       host: process.env.DB_HOST || 'localhost',
       port: process.env.DB_PORT || '5432',
       user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD ? process.env.DB_PASSWORD : null,
+      // Empty string is valid (trust/peer auth); only missing env → null
+      password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : null,
       dbName: process.env.DB_NAME,
       queryString: null
     };
@@ -77,7 +78,7 @@ function getEnvConfig(): {
       host: process.env.PGHOST || 'localhost',
       port: process.env.PGPORT || '5432',
       user: process.env.PGUSER,
-      password: process.env.PGPASSWORD ? process.env.PGPASSWORD : null,
+      password: process.env.PGPASSWORD !== undefined ? process.env.PGPASSWORD : null,
       dbName: process.env.PGDATABASE,
       queryString: null
     };
@@ -135,36 +136,26 @@ export async function resolveConnection(
       ...(envConfig.queryString ? { queryString: envConfig.queryString } : {})
     };
 
-    if (!password) {
-      password = (await getStoredPassword(profile)) ?? '';
+    // null = missing; '' = explicitly empty (trust/peer). Only prompt when missing.
+    if (password === null) {
+      password = (await getStoredPassword(profile)) ?? null;
     }
-    if (!password) {
+    if (password === null) {
       const prompted = await promptForCredentials(profile);
       password = prompted.password;
       await setStoredPassword(profile, password);
       saveStoredProfile(profile);
     }
 
-    const connStr = buildConnectionString(
-      envConfig.host,
-      envConfig.port,
-      envConfig.user,
-      password,
-      envConfig.dbName || 'postgres',
-      envConfig.queryString
-    );
-
     return {
-      connectionString: envConfig.dbName
-        ? connStr
-        : buildConnectionString(
-            envConfig.host,
-            envConfig.port,
-            envConfig.user,
-            password,
-            'postgres',
-            envConfig.queryString
-          ),
+      connectionString: buildConnectionString(
+        envConfig.host,
+        envConfig.port,
+        envConfig.user,
+        password ?? '',
+        envConfig.dbName || 'postgres',
+        envConfig.queryString
+      ),
       targetDatabase: envConfig.dbName,
       fromEnv: true
     };
@@ -176,7 +167,7 @@ export async function resolveConnection(
   let targetDb: string | null = storedProfile?.database ?? null;
   let queryString: string | null = storedProfile?.queryString ?? null;
 
-  if (!profile || !password) {
+  if (!profile || password === null) {
     const prompted = await promptForCredentials(storedProfile ?? undefined);
     profile = {
       host: prompted.host,
@@ -196,7 +187,7 @@ export async function resolveConnection(
     profile.host,
     profile.port,
     profile.user,
-    password!,
+    password,
     targetDb || 'postgres',
     queryString
   );

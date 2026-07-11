@@ -28,6 +28,11 @@
     "url": "git+https://github.com/Foisalislambd/pgshell.git"
   },
   "homepage": "https://foisalislambd.github.io/pgshell/",
+  "files": [
+    "dist",
+    "README.md",
+    ".env.example"
+  ],
   "dependencies": {
     "@inquirer/prompts": "^8.4.3",
     "chalk": "^5.6.2",

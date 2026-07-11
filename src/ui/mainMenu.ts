@@ -5,11 +5,12 @@ import { renderTable } from './tableRenderer.js';
 import { fuzzySelect } from './fuzzySelect.js';
 import { resolveConnection, replaceDatabaseInUrl, getConnectionStringForDb } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
-import { loadStoredProfile, saveStoredProfile, setStoredPassword, type StoredConnectionProfile } from '../db/credentials.js';
+import { loadStoredProfile, saveStoredProfile, setStoredPassword, deleteStoredPassword, type StoredConnectionProfile } from '../db/credentials.js';
 import { printBanner } from '../utils/banner.js';
 import { isDatabaseDoesNotExistError, sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
+import { escapeSqlIdentifier, isValidIdentifierName } from '../utils/sqlIdent.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -78,7 +79,7 @@ export async function runInteractiveUI() {
         if (createIt) {
           const adminUrl = replaceDatabaseInUrl(connectionString, 'postgres');
           const dbName = resolved.targetDatabase!;
-          const escaped = dbName.replace(/"/g, '""');
+          const escaped = escapeSqlIdentifier(dbName);
           await withSpinner(
             `Creating database "${dbName}"...`,
             async () => {
@@ -236,11 +237,6 @@ const GET_TABLES_SQL = `
   ORDER BY table_name;
 `;
 
-/** Escape double-quotes in SQL identifiers to prevent injection */
-function escapeSqlIdentifier(name: string): string {
-  return name.replace(/"/g, '""');
-}
-
 async function getPublicTables(): Promise<{ table_name: string }[]> {
   const result = await dbQuery(GET_TABLES_SQL);
   return result.rows;
@@ -259,16 +255,19 @@ async function handleListDatabases() {
 
 async function handleCreateDatabase() {
   const dbName = await input({
-    message: 'Enter new database name (any valid PostgreSQL name: letters, numbers, hyphens, etc.):'
+    message: 'Enter new database name (letters, numbers, underscores, hyphens):',
+    validate: (val) => {
+      const trimmed = val.trim();
+      if (!trimmed) return 'Database name cannot be empty';
+      if (!isValidIdentifierName(trimmed)) {
+        return 'Must start with a letter/underscore; only letters, numbers, underscores, hyphens';
+      }
+      return true;
+    }
   });
 
   const trimmed = dbName.trim();
-  if (!trimmed) {
-    console.log(chalk.red('\nDatabase name cannot be empty.'));
-    return;
-  }
-
-  const escaped = trimmed.replace(/"/g, '""');
+  const escaped = escapeSqlIdentifier(trimmed);
   try {
     await runOnDatabase('postgres', async (adminPool) => {
       await adminPool.query(`CREATE DATABASE "${escaped}"`);
@@ -307,7 +306,7 @@ async function handleDropDatabase() {
     return;
   }
 
-  const escapedDrop = dbToDrop.replace(/"/g, '""');
+  const escapedDrop = escapeSqlIdentifier(dbToDrop);
   try {
     const postgresUrl = dbToDrop === currentDb ? getAdminConnectionString('postgres') : null;
     await runOnDatabase('postgres', async (adminPool) => {
@@ -377,14 +376,16 @@ async function handleSwitchDatabase() {
 async function handleResetCredentials() {
   let existingProfile = loadStoredProfile();
   const currentConn = getConnectionString();
+  let existingQueryString: string | null = existingProfile?.queryString ?? null;
   if (currentConn) {
     try {
       const url = new URL(currentConn);
       existingProfile = {
         host: url.hostname,
         port: url.port || '5432',
-        user: url.username || 'postgres'
+        user: decodeURIComponent(url.username || 'postgres')
       };
+      existingQueryString = url.search ? url.search.slice(1) : null;
     } catch {
       /* use loadStoredProfile if parse fails */
     }
@@ -394,24 +395,27 @@ async function handleResetCredentials() {
     const prompted = await promptForCredentials(existingProfile ?? undefined);
 
     const currentDb = await getCurrentDatabase();
-    const db = currentDb || 'postgres';
-    let queryString: string | null = null;
-    if (currentConn) {
-      try {
-        const url = new URL(currentConn);
-        queryString = url.search ? url.search.slice(1) : null;
-      } catch {
-        /* ignore */
-      }
-    }
+    const queryString = prompted.queryString ?? existingQueryString;
+    const db = prompted.database || currentDb || 'postgres';
 
     const profile: StoredConnectionProfile = {
       host: prompted.host,
       port: prompted.port,
       user: prompted.user,
-      ...(prompted.database ? { database: prompted.database } : currentDb ? { database: currentDb } : {}),
-      ...(prompted.queryString ? { queryString: prompted.queryString } : queryString ? { queryString } : {})
+      database: db,
+      ...(queryString ? { queryString } : {})
     };
+
+    // Drop old keychain entry when host/port/user change
+    if (
+      existingProfile &&
+      (existingProfile.host !== profile.host ||
+        existingProfile.port !== profile.port ||
+        existingProfile.user !== profile.user)
+    ) {
+      await deleteStoredPassword(existingProfile);
+    }
+
     await setStoredPassword(profile, prompted.password);
     saveStoredProfile(profile);
 
@@ -430,7 +434,7 @@ async function handleResetCredentials() {
   } catch (err: unknown) {
     const e = err as Error & { name?: string };
     if (e?.name === 'ExitPromptError' || e?.message?.includes('SIGINT')) {
-      throw err; // Let the main loop handle the exit cleanly
+      throw err;
     }
     console.log(chalk.red(`\nFailed to reset credentials: ${sanitizeErrorMessage(err)}`));
   }
@@ -586,7 +590,9 @@ async function handleInsertRow() {
 function validateTableName(val: string): true | string {
   const trimmed = val.trim();
   if (trimmed.length === 0) return 'Table name cannot be empty';
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) return 'Use only letters, numbers, underscores (e.g. my_table)';
+  if (!isValidIdentifierName(trimmed)) {
+    return 'Use only letters, numbers, underscores, or hyphens (e.g. my_table)';
+  }
   return true;
 }
 

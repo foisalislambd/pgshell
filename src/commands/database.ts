@@ -1,11 +1,12 @@
 import chalk from 'chalk';
-import readline from 'readline';
-import { connect, disconnect, query, runOnDatabase } from '../db/client.js';
+import { connect, disconnect, query } from '../db/client.js';
 import { renderTable } from '../ui/tableRenderer.js';
 import { resolveConnection, replaceDatabaseInUrl } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
+import { promptConfirmation } from '../utils/promptConfirm.js';
+import { escapeSqlIdentifier, isValidIdentifierName } from '../utils/sqlIdent.js';
 
 export async function executeDbListCommand() {
   let connectionString: string;
@@ -47,14 +48,17 @@ export async function executeDbCreateCommand(name: string) {
     process.exit(1);
   }
 
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
-    console.error(chalk.red('\nError: Database name must start with a letter or underscore and contain only letters, numbers, and underscores.\n'));
+  if (!isValidIdentifierName(dbName)) {
+    console.error(
+      chalk.red(
+        '\nError: Database name must start with a letter or underscore and contain only letters, numbers, underscores, or hyphens.\n'
+      )
+    );
     process.exit(1);
   }
 
-  const escaped = dbName.replace(/"/g, '""');
+  const escaped = escapeSqlIdentifier(dbName);
 
-  // Must connect to an existing DB (postgres) to run CREATE DATABASE
   let adminConnectionString: string;
   try {
     const resolved = await resolveConnection(promptForCredentials);
@@ -81,16 +85,6 @@ export async function executeDbCreateCommand(name: string) {
   }
 }
 
-function promptConfirmation(question: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(/^y|yes$/i.test(answer.trim()));
-    });
-  });
-}
-
 export async function executeDbDropCommand(name: string, force = false) {
   let connectionString: string;
   try {
@@ -112,12 +106,16 @@ export async function executeDbDropCommand(name: string, force = false) {
     process.exit(1);
   }
 
-  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(dbName)) {
-    console.error(chalk.red('\nError: Database name must start with a letter or underscore and contain only letters, numbers, and underscores.\n'));
+  if (!isValidIdentifierName(dbName)) {
+    console.error(
+      chalk.red(
+        '\nError: Database name must start with a letter or underscore and contain only letters, numbers, underscores, or hyphens.\n'
+      )
+    );
     process.exit(1);
   }
 
-  const escaped = dbName.replace(/"/g, '""');
+  const escaped = escapeSqlIdentifier(dbName);
 
   if (!force) {
     const confirmed = await promptConfirmation(
@@ -130,14 +128,13 @@ export async function executeDbDropCommand(name: string, force = false) {
   }
 
   try {
+    // Already connected to postgres — no need for a second admin pool
     await connect({ connectionString });
-    await runOnDatabase('postgres', async (adminPool) => {
-      await adminPool.query(
-        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
-        [dbName]
-      );
-      await adminPool.query(`DROP DATABASE "${escaped}"`);
-    });
+    await query(
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
+      [dbName]
+    );
+    await query(`DROP DATABASE "${escaped}"`);
     console.log(chalk.green(`\n✓ Database "${dbName}" dropped successfully!`));
   } catch (error: unknown) {
     console.error(chalk.red(`\nError: ${sanitizeErrorMessage(error)}`));

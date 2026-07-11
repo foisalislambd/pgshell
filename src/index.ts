@@ -154,7 +154,7 @@ Examples:
   pgshell create my_app_db
   pgshell create test_backup
 
-Connects to postgres by default. Database name: letters, numbers, underscores only.`
+Connects to postgres by default. Database name: letters, numbers, underscores, or hyphens.`
   )
   .action(async (name) => {
     try {

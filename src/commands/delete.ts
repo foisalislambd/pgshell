@@ -1,11 +1,11 @@
 import chalk from 'chalk';
-import readline from 'readline';
 import { connect, disconnect, query } from '../db/client.js';
 import { resolveConnection, replaceDatabaseInUrl } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { fuzzySelect } from '../ui/fuzzySelect.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
+import { promptConfirmation } from '../utils/promptConfirm.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -32,16 +32,6 @@ const DROP_ALL_TABLES_SQL = `
   END $$;
 `;
 
-function promptConfirmation(question: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(/^y|yes$/i.test(answer.trim()));
-    });
-  });
-}
-
 /**
  * Delete (drop) all tables in a database.
  * - pgshell delete database-name  → drops all tables in that database
@@ -55,12 +45,10 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
     let targetDbName: string;
 
     if (dbNameArg?.trim()) {
-      // Direct database name provided
       targetDbName = dbNameArg.trim();
       connectionString = replaceDatabaseInUrl(resolved.connectionString, targetDbName);
       console.log(chalk.gray(`Target database: "${targetDbName}"\n`));
     } else if (resolved.targetDatabase) {
-      // .env has database configured
       targetDbName = resolved.targetDatabase;
       connectionString = replaceDatabaseInUrl(resolved.connectionString, targetDbName);
       console.log(chalk.gray(`Using .env → target database: "${targetDbName}"\n`));
@@ -99,7 +87,6 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
 
     await connect({ connectionString });
 
-    // Check how many tables exist
     const tablesResult = await query(GET_TABLES_SQL);
     const tables = tablesResult.rows as { tablename: string }[];
 

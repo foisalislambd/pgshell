@@ -3,8 +3,15 @@ import pg from 'pg';
 let pool: pg.Pool | null = null;
 let storedConnectionString: string | null = null;
 
+const SSL_HINT =
+  /sslmode=(require|verify-ca|verify-full)|\.amazonaws\.com|\.supabase\.com|\.neon\.tech|\.render\.com|\.fly\.io|\.railway\.app/i;
+
 export interface DBConnectionConfig {
   connectionString: string;
+}
+
+function poolSslOption(connectionString: string): { rejectUnauthorized: false } | undefined {
+  return SSL_HINT.test(connectionString) ? { rejectUnauthorized: false } : undefined;
 }
 
 /** Returns connection string for admin operations (e.g. connect to postgres DB) */
@@ -15,7 +22,6 @@ export function getAdminConnectionString(targetDb = 'postgres'): string | null {
     url.pathname = `/${targetDb}`;
     return url.toString();
   } catch {
-    // Fallback if not a valid URL (e.g. key-value pairs)
     return storedConnectionString.replace(/\/([^/]+)(\?.*)?$/, (_, _db, q = '') => `/${targetDb}${q}`);
   }
 }
@@ -25,41 +31,29 @@ export function getConnectionString(): string | null {
   return storedConnectionString;
 }
 
-export function connect(config: DBConnectionConfig): Promise<void> {
-  return (async () => {
-    if (pool) {
-      const previous = pool;
-      pool = null;
-      storedConnectionString = null;
-      await previous.end();
-    }
+export async function connect(config: DBConnectionConfig): Promise<void> {
+  if (pool) {
+    const previous = pool;
+    pool = null;
+    storedConnectionString = null;
+    await previous.end();
+  }
 
-    return new Promise<void>((resolve, reject) => {
-      try {
-        storedConnectionString = config.connectionString;
-        const needsSSL = /sslmode=(require|verify-ca|verify-full)|\.amazonaws\.com|\.supabase\.com|\.neon\.tech|\.render\.com|\.fly\.io|\.railway\.app/i.test(config.connectionString);
-        pool = new pg.Pool({
-          connectionString: config.connectionString,
-          ssl: needsSSL ? { rejectUnauthorized: false } : undefined
-        });
+  storedConnectionString = config.connectionString;
+  pool = new pg.Pool({
+    connectionString: config.connectionString,
+    ssl: poolSslOption(config.connectionString)
+  });
 
-        pool
-          .query('SELECT 1')
-          .then(() => resolve())
-          .catch(async (err) => {
-            const failedPool = pool;
-            pool = null;
-            storedConnectionString = null;
-            if (failedPool) {
-              await failedPool.end().catch(() => undefined);
-            }
-            reject(err);
-          });
-      } catch (err) {
-        reject(err);
-      }
-    });
-  })();
+  try {
+    await pool.query('SELECT 1');
+  } catch (err) {
+    const failedPool = pool;
+    pool = null;
+    storedConnectionString = null;
+    await failedPool.end().catch(() => undefined);
+    throw err;
+  }
 }
 
 export function disconnect(): Promise<void> {
@@ -80,17 +74,16 @@ export async function query(text: string, params?: unknown[]): Promise<pg.QueryR
   return pool.query(text, params);
 }
 
-/** Run a query on a different database (e.g. postgres). Used for DROP DATABASE etc. */
+/** Run work on a different database (e.g. postgres) using a short-lived pool. */
 export async function runOnDatabase<T>(
   targetDb: string,
   fn: (client: pg.Pool) => Promise<T>
 ): Promise<T> {
   const adminUrl = getAdminConnectionString(targetDb);
   if (!adminUrl) throw new Error('Not connected. Cannot run admin operation.');
-  const needsSSL = /sslmode=(require|verify-ca|verify-full)|\.amazonaws\.com|\.supabase\.com|\.neon\.tech|\.render\.com|\.fly\.io|\.railway\.app/i.test(adminUrl);
   const adminPool = new pg.Pool({
     connectionString: adminUrl,
-    ssl: needsSSL ? { rejectUnauthorized: false } : undefined
+    ssl: poolSslOption(adminUrl)
   });
   try {
     return await fn(adminPool);
