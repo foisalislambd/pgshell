@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Stricter TypeScript config (`noUnusedLocals`, `noImplicitReturns`, scoped `include`)
 - npm package metadata and publish contents aligned for production releases
+- Connection resolve: if `.env` login fails, fall back to saved system credentials and use **only the database name** from project `.env`
 
 ## [1.0.9] - 2026-07-10
 

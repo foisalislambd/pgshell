@@ -158,7 +158,9 @@ PGDATABASE=yourdatabase
 
 ### Password storage (keychain)
 
-When you connect interactively (without `.env`), PgShell can save your password in your **OS keychain** so you don't have to re-enter it. It uses Windows Credential Manager, macOS Keychain, or Linux Secret Service. Connection profiles (host, port, user) are stored in `~/.pgshell/config.json` — passwords are never saved in plain text.
+When you connect interactively (without working `.env` login), PgShell can save your password in your **OS keychain** so you don't have to re-enter it. It uses Windows Credential Manager, macOS Keychain, or Linux Secret Service. Connection profiles (host, port, user) are stored in `~/.pgshell/config.json` — passwords are never saved in plain text.
+
+**Fallback:** If `.env` login credentials fail, PgShell uses those saved system credentials and takes **only the database name** (`DB_NAME` / `PGDATABASE` / path in `DATABASE_URL`) from the project `.env`. You can also keep just `DB_NAME` in `.env` and rely entirely on the saved profile for host/user/password.
 
 ### Cloud & SSL
 

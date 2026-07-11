@@ -31,7 +31,15 @@ export async function runInteractiveUI() {
       const resolved = await resolveConnection(promptForCredentials);
 
       if (resolved.targetDatabase) {
-        console.log(chalk.gray(`Using .env → connecting directly to "${resolved.targetDatabase}"\n`));
+        if (resolved.source === 'stored') {
+          console.log(
+            chalk.gray(`Saved credentials → connecting to "${resolved.targetDatabase}" (from .env)\n`)
+          );
+        } else if (resolved.source === 'env') {
+          console.log(chalk.gray(`Using .env → connecting directly to "${resolved.targetDatabase}"\n`));
+        } else {
+          console.log(chalk.gray(`Connecting to "${resolved.targetDatabase}"\n`));
+        }
       }
       connectionString = resolved.connectionString;
 
