@@ -10,10 +10,15 @@ import { executeQueryCommand } from './commands/query.js';
 import { executeDbListCommand, executeDbCreateCommand, executeDbDropCommand } from './commands/database.js';
 import { executeTableCommand } from './commands/table.js';
 import { executeDeleteCommand } from './commands/delete.js';
+import { executeExecCommand } from './commands/exec.js';
+import { executeDoctorCommand } from './commands/doctor.js';
+import { executeConfigShowCommand, executeConfigClearCommand } from './commands/config.js';
+import { printCompletionScript } from './commands/completion.js';
+import { flagsFromCommandOpts } from './cli/flags.js';
 import chalk from 'chalk';
 import { sanitizeErrorMessage } from './utils/sanitizeError.js';
 
-config(); // Load .env file automatically
+config();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as { version: string };
@@ -24,23 +29,30 @@ program
   .name('pgshell')
   .description('All-in-one powerful and human-friendly PostgreSQL CLI Manager')
   .version(pkg.version)
+  .option('--json', 'Machine-readable JSON output (implies quiet)')
+  .option('--csv', 'CSV output for tabular results (implies quiet; ignored if --json)')
+  .option('-q, --quiet', 'Suppress non-essential human messages')
   .addHelpText(
     'after',
     `
 Commands:
-  ui, view     Interactive menu (default) — browse DBs, tables, run SQL
-  query <sql>  Run a raw SQL query
-  list         List all databases with sizes
-  create       Create a new database
-  drop         Drop a database (use --yes to skip confirmation)
-  table        List all tables in a database
-  delete       Drop all tables in a database
+  ui, view          Interactive menu (default)
+  query <sql>       Run a raw SQL query
+  exec <file.sql>   Run a SQL file
+  list              List databases with sizes
+  create            Create a database
+  drop              Drop a database (--yes to skip confirm)
+  table             List tables in a database
+  delete            Drop all tables in a database
+  doctor            Connection health check
+  config show|clear Saved profile (no passwords printed)
+  completion        Print shell completion script
 
-Config: .env (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME) or DATABASE_URL.
-Run "pgshell <command> --help" for details on any command.`
+Global flags: --json  --csv  -q/--quiet
+Config: .env (DB_NAME, …) or DATABASE_URL; saved keychain profile as fallback.
+Run "pgshell <command> --help" for details.`
   );
 
-// Helper to handle any top-level graceful exits
 const handleExit = (error: unknown) => {
   const e = error as Error & { name?: string };
   if (e?.name === 'ExitPromptError' || e?.message?.includes('SIGINT')) {
@@ -52,7 +64,8 @@ const handleExit = (error: unknown) => {
   }
 };
 
-// Interactive Mode (Default if no args)
+const getFlags = (cmd: Command) => flagsFromCommandOpts(cmd.optsWithGlobals());
+
 const launchUI = async () => {
   try {
     await runInteractiveUI();
@@ -64,81 +77,58 @@ const launchUI = async () => {
 program
   .command('ui', { isDefault: true })
   .description('Launch the interactive menu for databases and tables')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell          Start interactive UI (default)
-  pgshell ui       Same as above
-
-Use .env or enter credentials when prompted. Browse databases, tables,
-run SQL, monitor queries, create/drop tables — all from the menu.`
-  )
   .action(launchUI);
 
-program
-  .command('view')
-  .description('Launch the interactive UI (alias for ui)')
-  .action(launchUI);
+program.command('view').description('Launch the interactive UI (alias for ui)').action(launchUI);
 
-// List tables
 program
   .command('table [dbName]')
   .description('List all tables in a database with schema, owner, and row estimates')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell table              Use .env DB or fuzzy-select database
-  pgshell table my_database  List tables in my_database directly
-
-Shows: schema, table name, type, owner, estimated row count.`
-  )
-  .action(async (dbName?: string) => {
+  .action(async (dbName: string | undefined, _opts, cmd: Command) => {
     try {
-      await executeTableCommand(dbName);
+      await executeTableCommand(dbName, getFlags(cmd));
     } catch (error) {
       handleExit(error);
     }
   });
 
-// Direct Query Execution
 program
   .command('query <sql>')
   .description('Execute a raw SQL query and display formatted results')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell query "SELECT * FROM users LIMIT 5"
-  pgshell query "SELECT COUNT(*) FROM orders"
-  pgshell query "INSERT INTO logs (message) VALUES ('test')"
-
-Requires .env credentials. Output is formatted as a table. Exits with code 1 on errors.`
-  )
-  .action(async (sql) => {
+  .action(async (sql: string, _opts, cmd: Command) => {
     try {
-      await executeQueryCommand(sql);
+      await executeQueryCommand(sql, getFlags(cmd));
     } catch (error) {
       handleExit(error);
     }
   });
 
-// Database commands
 program
-  .command('list')
-  .description('List all databases on the server with sizes')
+  .command('exec <file>')
+  .description('Execute a SQL file against the target database')
   .addHelpText(
     'after',
     `
 Examples:
-  pgshell list
+  pgshell exec ./scripts/seed.sql
+  pgshell exec ./scripts/seed.sql --json
 
-Shows database names and sizes (human-readable). Uses .env or prompts for credentials.`
+Runs the file contents as one script (not a migration framework).`
   )
-  .action(async () => {
+  .action(async (file: string, _opts, cmd: Command) => {
     try {
-      await executeDbListCommand();
+      await executeExecCommand(file, getFlags(cmd));
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+program
+  .command('list')
+  .description('List all databases on the server with sizes')
+  .action(async (_opts, cmd: Command) => {
+    try {
+      await executeDbListCommand(getFlags(cmd));
     } catch (error) {
       handleExit(error);
     }
@@ -147,18 +137,9 @@ Shows database names and sizes (human-readable). Uses .env or prompts for creden
 program
   .command('create <name>')
   .description('Create a new database')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell create my_app_db
-  pgshell create test_backup
-
-Connects to postgres by default. Database name: letters, numbers, underscores, or hyphens.`
-  )
-  .action(async (name) => {
+  .action(async (name: string, _opts, cmd: Command) => {
     try {
-      await executeDbCreateCommand(name);
+      await executeDbCreateCommand(name, getFlags(cmd));
     } catch (error) {
       handleExit(error);
     }
@@ -168,18 +149,9 @@ program
   .command('drop <name>')
   .description('Drop a database (prompts for confirmation unless --yes)')
   .option('-y, --yes', 'Skip confirmation prompt')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell drop old_database       Prompts: "Are you sure?"
-  pgshell drop old_database --yes No prompt, drops immediately
-
-Cannot be undone. If you drop the DB you're connected to, PgShell reconnects to postgres.`
-  )
-  .action(async (name, opts: { yes?: boolean }) => {
+  .action(async (name: string, opts: { yes?: boolean }, cmd: Command) => {
     try {
-      await executeDbDropCommand(name, opts?.yes ?? false);
+      await executeDbDropCommand(name, opts?.yes ?? false, getFlags(cmd));
     } catch (error) {
       handleExit(error);
     }
@@ -188,16 +160,7 @@ Cannot be undone. If you drop the DB you're connected to, PgShell reconnects to 
 program
   .command('delete [dbName]')
   .description('Drop all tables in the public schema of a database')
-  .addHelpText(
-    'after',
-    `
-Examples:
-  pgshell delete              Use .env DB or fuzzy-select database
-  pgshell delete my_database  Drop all tables in my_database
-
-Prompts for confirmation before dropping. Cannot be undone. Shows table list before asking.`
-  )
-  .action(async (dbName?: string) => {
+  .action(async (dbName: string | undefined) => {
     try {
       await executeDeleteCommand(dbName);
     } catch (error) {
@@ -205,5 +168,46 @@ Prompts for confirmation before dropping. Cannot be undone. Shows table list bef
     }
   });
 
-// Catch unhandled rejections globally from Commander
+program
+  .command('doctor')
+  .description('Check connection health: latency, version, user, SSL')
+  .action(async (_opts, cmd: Command) => {
+    try {
+      await executeDoctorCommand(getFlags(cmd));
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+const configCmd = program.command('config').description('Manage saved connection profile');
+
+configCmd
+  .command('show')
+  .description('Show saved profile (password never printed)')
+  .action(async (_opts, cmd: Command) => {
+    try {
+      await executeConfigShowCommand(getFlags(cmd));
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+configCmd
+  .command('clear')
+  .description('Clear saved profile and keychain password')
+  .action(async (_opts, cmd: Command) => {
+    try {
+      await executeConfigClearCommand(getFlags(cmd));
+    } catch (error) {
+      handleExit(error);
+    }
+  });
+
+program
+  .command('completion <shell>')
+  .description('Print shell completion script (bash|zsh|powershell)')
+  .action((shell: string) => {
+    printCompletionScript(shell);
+  });
+
 program.parseAsync(process.argv).catch(handleExit);

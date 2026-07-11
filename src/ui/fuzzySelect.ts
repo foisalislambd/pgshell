@@ -3,6 +3,7 @@ import { Fzf } from 'fzf';
 
 // Quick utility to strip ANSI codes
 function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex -- ANSI escape sequences
   return str.replace(/\x1B\[\d+;?\d*m/g, '');
 }
 

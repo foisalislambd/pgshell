@@ -1,14 +1,17 @@
 import chalk from 'chalk';
 import { connect, disconnect, query } from '../db/client.js';
-import { renderTable } from '../ui/tableRenderer.js';
 import { resolveConnection, replaceDatabaseInUrl } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { promptConfirmation } from '../utils/promptConfirm.js';
 import { escapeSqlIdentifier, isValidIdentifierName } from '../utils/sqlIdent.js';
+import type { CliFlags } from '../cli/flags.js';
+import { resolveCliFlags } from '../cli/flags.js';
+import { emitRows, logInfo } from '../cli/output.js';
 
-export async function executeDbListCommand() {
+export async function executeDbListCommand(flagsInput: Partial<CliFlags> = {}) {
+  const flags = resolveCliFlags(flagsInput);
   let connectionString: string;
   try {
     const resolved = await resolveConnection(promptForCredentials);
@@ -31,8 +34,12 @@ export async function executeDbListCommand() {
       WHERE datistemplate = false
       ORDER BY datname
     `);
-    console.log(chalk.cyan('\nDatabases on server:'));
-    renderTable(result.rows);
+    const rows = result.rows as Record<string, unknown>[];
+    emitRows(flags, rows, {
+      jsonEnvelope: { type: 'databases' },
+      humanTitle: '\nDatabases on server:',
+      emptyHumanMessage: 'No databases found.'
+    });
   } catch (error: unknown) {
     console.error(chalk.red(`\nError: ${sanitizeErrorMessage(error)}`));
     process.exit(1);
@@ -41,7 +48,8 @@ export async function executeDbListCommand() {
   }
 }
 
-export async function executeDbCreateCommand(name: string) {
+export async function executeDbCreateCommand(name: string, flagsInput: Partial<CliFlags> = {}) {
+  const flags = resolveCliFlags(flagsInput);
   const dbName = name.trim();
   if (!dbName) {
     console.error(chalk.red('\nError: Database name cannot be empty.\n'));
@@ -76,7 +84,11 @@ export async function executeDbCreateCommand(name: string) {
   try {
     await connect({ connectionString: adminConnectionString });
     await query(`CREATE DATABASE "${escaped}"`);
-    console.log(chalk.green(`\n✓ Database "${dbName}" created successfully!`));
+    if (flags.format === 'json') {
+      console.log(JSON.stringify({ ok: true, created: dbName }, null, 2));
+    } else {
+      logInfo(flags, chalk.green(`\n✓ Database "${dbName}" created successfully!`));
+    }
   } catch (error: unknown) {
     console.error(chalk.red(`\nError: ${sanitizeErrorMessage(error)}`));
     process.exit(1);
@@ -85,7 +97,12 @@ export async function executeDbCreateCommand(name: string) {
   }
 }
 
-export async function executeDbDropCommand(name: string, force = false) {
+export async function executeDbDropCommand(
+  name: string,
+  force = false,
+  flagsInput: Partial<CliFlags> = {}
+) {
+  const flags = resolveCliFlags(flagsInput);
   let connectionString: string;
   try {
     const resolved = await resolveConnection(promptForCredentials);
@@ -122,20 +139,23 @@ export async function executeDbDropCommand(name: string, force = false) {
       chalk.yellow(`\nAre you sure you want to DROP database "${dbName}"? All data will be lost. (y/N): `)
     );
     if (!confirmed) {
-      console.log(chalk.gray('Cancelled.'));
+      logInfo(flags, chalk.gray('Cancelled.'));
       process.exit(0);
     }
   }
 
   try {
-    // Already connected to postgres — no need for a second admin pool
     await connect({ connectionString });
     await query(
       `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()`,
       [dbName]
     );
     await query(`DROP DATABASE "${escaped}"`);
-    console.log(chalk.green(`\n✓ Database "${dbName}" dropped successfully!`));
+    if (flags.format === 'json') {
+      console.log(JSON.stringify({ ok: true, dropped: dbName }, null, 2));
+    } else {
+      logInfo(flags, chalk.green(`\n✓ Database "${dbName}" dropped successfully!`));
+    }
   } catch (error: unknown) {
     console.error(chalk.red(`\nError: ${sanitizeErrorMessage(error)}`));
     process.exit(1);

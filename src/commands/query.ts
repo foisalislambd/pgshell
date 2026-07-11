@@ -1,14 +1,17 @@
 import chalk from 'chalk';
 import { connect, disconnect, query } from '../db/client.js';
-import { renderTable } from '../ui/tableRenderer.js';
 import { resolveConnection } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
+import type { CliFlags } from '../cli/flags.js';
+import { emitRows, logInfo } from '../cli/output.js';
+import { resolveCliFlags } from '../cli/flags.js';
 
-export async function executeQueryCommand(sql: string) {
+export async function executeQueryCommand(sql: string, flagsInput: Partial<CliFlags> = {}) {
+  const flags = resolveCliFlags(flagsInput);
   let connectionString: string;
   try {
     const resolved = await resolveConnection(promptForCredentials);
@@ -30,21 +33,33 @@ export async function executeQueryCommand(sql: string) {
 
   try {
     await connect({ connectionString });
-    const result = await withSpinner('Running query...', () => query(sql), {
-      failMessage: 'Query failed'
-    });
-    
+    const run = () => query(sql);
+    const result = flags.quiet
+      ? await run()
+      : await withSpinner('Running query...', run, { failMessage: 'Query failed' });
+
     const commandLabel = result.command || 'query';
-    const rowCount = result.rowCount !== null ? `(${result.rowCount} rows affected)` : '';
-    
-    console.log(chalk.dim('\nQuery: ') + highlightSql(sql));
-    console.log(chalk.green(`\n✓ ${chalk.bold(commandLabel)} ${rowCount}`));
-    
-    if (result.rows && result.rows.length > 0) {
-      renderTable(result.rows);
-    } else {
-      console.log(chalk.dim('No rows returned.'));
+    const rows = (result.rows ?? []) as Record<string, unknown>[];
+
+    if (flags.format === 'human') {
+      logInfo(flags, chalk.dim('\nQuery: ') + highlightSql(sql));
+      const rowCount = result.rowCount !== null ? `(${result.rowCount} rows affected)` : '';
+      console.log(chalk.green(`\n✓ ${chalk.bold(commandLabel)} ${rowCount}`));
+      if (rows.length > 0) {
+        emitRows(flags, rows);
+      } else {
+        console.log(chalk.dim('No rows returned.'));
+      }
+      return;
     }
+
+    emitRows(flags, rows, {
+      jsonEnvelope: {
+        command: commandLabel,
+        rowCount: result.rowCount,
+        sql
+      }
+    });
   } catch (error: unknown) {
     console.error(chalk.red(`\nQuery Error: ${sanitizeErrorMessage(error)}`));
     process.exit(1);

@@ -180,37 +180,48 @@ SSL is enabled automatically when your connection string contains `sslmode=requi
 
 All commands support `.env` credentials. If no `.env` is present, PgShell will prompt you when needed.
 
+**Global flags (most commands):** `--json` · `--csv` · `-q` / `--quiet`
+
 | Command | Description |
 |---------|-------------|
 | `pgshell` or `pgshell ui` or `pgshell view` | Launch the interactive menu |
 | `pgshell query "<sql>"` | Run a raw SQL query |
+| `pgshell exec <file.sql>` | Run a SQL file |
 | `pgshell list` | List all databases with sizes |
 | `pgshell create <name>` | Create a new database |
 | `pgshell drop <name>` | Drop a database (`--yes` to skip confirmation) |
 | `pgshell table [dbName]` | List all tables — specify `dbName` or use `.env` / select interactively |
 | `pgshell delete [dbName]` | Drop all tables in a database — with confirmation |
+| `pgshell doctor` | Connection health check (latency, version, SSL, credential source) |
+| `pgshell config show` | Show saved profile (never prints password) |
+| `pgshell config clear` | Clear saved profile + keychain password |
+| `pgshell completion <shell>` | Print bash / zsh / powershell completion |
 
 **Examples:**
 
 ```bash
-# Query
+# Query (human / JSON / CSV)
 pgshell query "SELECT * FROM users LIMIT 5"
-pgshell query "SELECT COUNT(*) FROM orders"
+pgshell query "SELECT * FROM users LIMIT 5" --json
+pgshell list --csv
+
+# SQL file
+pgshell exec ./scripts/seed.sql
 
 # Databases
 pgshell list
 pgshell create my_app_db
 pgshell drop old_db --yes
+pgshell doctor --json
 
 # Tables
-pgshell table                    # Use .env or pick database
-pgshell table my_database        # Direct database name
+pgshell table my_database --json
 
-# Delete all tables (prompts for confirmation)
-pgshell delete my_database
+# Shell completion
+eval "$(pgshell completion bash)"
 ```
 
-Results appear as formatted tables. On errors, PgShell exits with code 1.
+Results appear as formatted tables (or JSON/CSV). On errors, PgShell exits with code 1.
 
 ---
 
@@ -232,6 +243,7 @@ Run `pgshell` or `pgshell ui` to open the interactive menu.
 | 🗑️ **Delete one table** | Drop a single table (with confirmation) |
 | 🚨 **Delete all tables** | Drop all `public` tables (extra confirmation) |
 | ⚡ **Run custom SQL** | Execute any SQL command |
+| 🕘 **Recent queries** | Re-run from `~/.pgshell/history.json` |
 | 📊 **Monitor active queries** | Live view of running queries |
 | ❌ **Disconnect & Exit** | Close connection and quit |
 
@@ -286,8 +298,15 @@ pgshell
 pgshell/
 ├── src/
 │   ├── index.ts                 # CLI entry, Commander
+│   ├── cli/
+│   │   ├── flags.ts            # --json / --csv / --quiet
+│   │   └── output.ts           # Shared emitters
 │   ├── commands/
 │   │   ├── query.ts             # Direct query command
+│   │   ├── exec.ts              # SQL file runner
+│   │   ├── doctor.ts            # Connection health
+│   │   ├── config.ts            # Saved profile show/clear
+│   │   ├── completion.ts        # Shell completion scripts
 │   │   ├── database.ts         # list/create/drop DB commands
 │   │   ├── table.ts            # List tables command
 │   │   └── delete.ts           # Drop all tables command
@@ -295,6 +314,7 @@ pgshell/
 │   │   ├── client.ts           # Connection pool, pg wrapper
 │   │   ├── connectionResolver.ts # .env + keychain + prompt resolution
 │   │   ├── credentials.ts     # Keychain + ~/.pgshell/config
+│   │   ├── queryHistory.ts    # Interactive SQL history
 │   │   ├── cliCredentials.ts  # Interactive credential prompts
 │   │   └── env.ts             # .env hint printing
 │   ├── ui/
@@ -323,8 +343,9 @@ pgshell/
 | `npm run build` | Build to `dist/` |
 | `npm start` | Run built output |
 | `npm run typecheck` | TypeScript check without emit |
+| `npm run lint` | ESLint |
 | `npm test` | Run unit tests |
-| `npm run ci` | Typecheck + test + build (used by CI / publish) |
+| `npm run ci` | Typecheck + lint + test + build |
 
 ---
 

@@ -11,6 +11,7 @@ import { isDatabaseDoesNotExistError, sanitizeErrorMessage } from '../utils/sani
 import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
 import { escapeSqlIdentifier, isValidIdentifierName } from '../utils/sqlIdent.js';
+import { loadQueryHistory, pushQueryHistory, trimHistoryPreview } from '../db/queryHistory.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -152,6 +153,7 @@ export async function runInteractiveUI() {
         { name: chalk.cyan('Data') + '     🔍 View table data', value: 'view_table' as const, description: 'Browse rows in any table' },
         { name: chalk.cyan('Data') + '     📥 Add new row', value: 'insert_row' as const, description: 'Insert a record' },
         { name: chalk.green('Query') + '    ⚡ Run custom SQL', value: 'run_query' as const, description: 'Execute any SQL' },
+        { name: chalk.green('Query') + '    🕘 Recent queries', value: 'recent_queries' as const, description: 'Re-run from history' },
         { name: chalk.green('Query') + '    📊 Monitor active queries', value: 'monitor' as const, description: 'See running queries' },
         { name: chalk.magenta('Schema') + '   📋 List all tables', value: 'list_tables' as const, description: 'See what tables exist' },
         { name: chalk.magenta('Schema') + '   📖 Table structure', value: 'describe_table' as const, description: 'See columns, types, details' },
@@ -169,7 +171,7 @@ export async function runInteractiveUI() {
       const action = await fuzzySelect(
         chalk.bold('What would you like to do?') + dbLabel + chalk.dim(' (type to filter)'),
         menuChoices,
-        { pageSize: 15 }
+        { pageSize: 16 }
       );
 
       switch (action) {
@@ -211,6 +213,9 @@ export async function runInteractiveUI() {
           break;
         case 'run_query':
           await handleRunQuery();
+          break;
+        case 'recent_queries':
+          await handleRecentQueries();
           break;
         case 'monitor':
           await handleMonitor();
@@ -684,11 +689,8 @@ async function handleDropAllTables() {
   }
 }
 
-async function handleRunQuery() {
-  const sql = await input({
-    message: 'Enter your SQL query (we\'ll run it for you):'
-  });
-
+async function executeSqlAndShow(sql: string) {
+  pushQueryHistory(sql);
   try {
     const result = await withSpinner(
       'Running your query...',
@@ -708,6 +710,36 @@ async function handleRunQuery() {
   } catch (err: unknown) {
     console.log(chalk.red(`\nQuery failed: ${sanitizeErrorMessage(err)}`));
   }
+}
+
+async function handleRunQuery() {
+  const sql = await input({
+    message: 'Enter your SQL query (we\'ll run it for you):'
+  });
+  if (!sql.trim()) {
+    console.log(chalk.gray('\nEmpty query cancelled.'));
+    return;
+  }
+  await executeSqlAndShow(sql);
+}
+
+async function handleRecentQueries() {
+  const history = loadQueryHistory();
+  if (history.length === 0) {
+    console.log(chalk.yellow('\nNo recent queries yet. Run custom SQL first.'));
+    return;
+  }
+
+  const selected = await fuzzySelect(
+    'Select a recent query to re-run (type to filter):',
+    history.map((h, i) => ({
+      name: `${i + 1}. ${trimHistoryPreview(h.sql)}`,
+      value: h.sql,
+      description: h.at
+    }))
+  );
+
+  await executeSqlAndShow(selected);
 }
 
 async function handleMonitor() {

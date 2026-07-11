@@ -6,8 +6,12 @@ import { homedir } from 'os';
 const PGSHELL_SERVICE = 'pgshell';
 
 /** Config file path: ~/.pgshell/config.json (stores host, port, user - NOT password) */
-function getConfigPath(): string {
+export function getConfigPath(): string {
   return path.join(homedir(), '.pgshell', 'config.json');
+}
+
+export function getPgshellDir(): string {
+  return path.join(homedir(), '.pgshell');
 }
 
 export interface StoredConnectionProfile {
@@ -79,4 +83,18 @@ export async function deleteStoredPassword(profile: StoredConnectionProfile): Pr
   } catch {
     /* ignore */
   }
+}
+
+/** Remove saved profile file and its keychain password */
+export async function clearStoredProfile(): Promise<boolean> {
+  const profile = loadStoredProfile();
+  if (profile) {
+    await deleteStoredPassword(profile);
+  }
+  const configPath = getConfigPath();
+  if (fs.existsSync(configPath)) {
+    fs.unlinkSync(configPath);
+    return true;
+  }
+  return Boolean(profile);
 }

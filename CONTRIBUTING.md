@@ -17,7 +17,7 @@ npm run dev
 npm run ci
 ```
 
-This runs typecheck, unit tests, and a production build.
+This runs typecheck, lint, unit tests, and a production build.
 
 ## Guidelines
 

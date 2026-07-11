@@ -1,11 +1,13 @@
 import chalk from 'chalk';
 import { connect, disconnect, query } from '../db/client.js';
-import { renderTable } from '../ui/tableRenderer.js';
 import { resolveConnection, replaceDatabaseInUrl } from '../db/connectionResolver.js';
 import { promptForCredentials } from '../db/cliCredentials.js';
 import { fuzzySelect } from '../ui/fuzzySelect.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
+import type { CliFlags } from '../cli/flags.js';
+import { resolveCliFlags } from '../cli/flags.js';
+import { emitRows, logDim } from '../cli/output.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -28,7 +30,8 @@ const GET_TABLES_SQL = `
   ORDER BY t.table_name;
 `;
 
-export async function executeTableCommand(dbNameArg?: string) {
+export async function executeTableCommand(dbNameArg?: string, flagsInput: Partial<CliFlags> = {}) {
+  const flags = resolveCliFlags(flagsInput);
   try {
     const resolved = await resolveConnection(promptForCredentials);
 
@@ -38,10 +41,10 @@ export async function executeTableCommand(dbNameArg?: string) {
     if (dbNameArg?.trim()) {
       targetDbName = dbNameArg.trim();
       connectionString = replaceDatabaseInUrl(resolved.connectionString, targetDbName);
-      console.log(chalk.gray(`Connecting to "${targetDbName}"...\n`));
+      logDim(flags, `Connecting to "${targetDbName}"...\n`);
     } else if (resolved.targetDatabase) {
       targetDbName = resolved.targetDatabase;
-      console.log(chalk.gray(`Using .env → connecting to "${targetDbName}"\n`));
+      logDim(flags, `Using .env → connecting to "${targetDbName}"\n`);
     } else {
       if (!process.stdin.isTTY) {
         console.error(
@@ -59,7 +62,11 @@ export async function executeTableCommand(dbNameArg?: string) {
       const databases = dbResult.rows as { Database: string; Size: string }[];
 
       if (databases.length === 0) {
-        console.log(chalk.yellow('No databases found on server.'));
+        if (flags.format === 'json') {
+          console.log(JSON.stringify({ database: null, rowCount: 0, rows: [] }, null, 2));
+        } else {
+          console.log(chalk.yellow('No databases found on server.'));
+        }
         await disconnect();
         process.exit(1);
       }
@@ -72,7 +79,7 @@ export async function executeTableCommand(dbNameArg?: string) {
       await disconnect();
       connectionString = replaceDatabaseInUrl(resolved.connectionString, selected);
       targetDbName = selected;
-      console.log(chalk.gray(`Connecting to "${selected}"...\n`));
+      logDim(flags, `Connecting to "${selected}"...\n`);
     }
 
     await connect({ connectionString });
@@ -84,14 +91,13 @@ export async function executeTableCommand(dbNameArg?: string) {
     }
 
     const result = await query(GET_TABLES_SQL);
+    const rows = result.rows as Record<string, unknown>[];
 
-    if (result.rows.length === 0) {
-      console.log(chalk.yellow('No tables found in public schema.'));
-    } else {
-      const dbLabel = targetDbName ? chalk.dim(` (database: ${targetDbName})`) : '';
-      console.log(chalk.cyan('\nTables' + dbLabel + ':'));
-      renderTable(result.rows);
-    }
+    emitRows(flags, rows, {
+      jsonEnvelope: { type: 'tables', database: targetDbName },
+      humanTitle: `\nTables${targetDbName ? ` (database: ${targetDbName})` : ''}:`,
+      emptyHumanMessage: 'No tables found in public schema.'
+    });
   } catch (err) {
     if (!process.stdin.isTTY) {
       console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file.\n'));
