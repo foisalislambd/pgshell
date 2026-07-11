@@ -1,6 +1,5 @@
 import { search } from '@inquirer/prompts';
 import { Fzf } from 'fzf';
-import chalk from 'chalk';
 
 // Quick utility to strip ANSI codes
 function stripAnsi(str: string): string {

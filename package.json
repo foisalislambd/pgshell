@@ -1,36 +1,53 @@
 {
   "name": "pgshell",
-  "version": "1.0.9",
+  "version": "1.1.0",
   "description": "All-in-one powerful and human-friendly PostgreSQL CLI manager",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
     "pgshell": "dist/index.js"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --clean",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ci": "npm run typecheck && npm run test && npm run build",
+    "prepublishOnly": "npm run ci"
   },
   "keywords": [
     "postgresql",
+    "postgres",
     "cli",
     "tui",
-    "manager",
-    "database"
+    "database",
+    "sql",
+    "psql",
+    "pg"
   ],
-  "author": "",
+  "author": {
+    "name": "Foisal Islam",
+    "url": "https://github.com/Foisalislambd"
+  },
   "license": "ISC",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Foisalislambd/pgshell.git"
   },
+  "bugs": {
+    "url": "https://github.com/Foisalislambd/pgshell/issues"
+  },
   "homepage": "https://foisalislambd.github.io/pgshell/",
   "files": [
     "dist",
+    "LICENSE",
     "README.md",
+    "CHANGELOG.md",
     ".env.example"
   ],
   "dependencies": {
@@ -50,6 +67,7 @@
     "@types/pg": "^8.20.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^3.2.4"
   }
 }

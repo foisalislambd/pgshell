@@ -1,5 +1,6 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/pgshell"><img src="https://img.shields.io/npm/v/pgshell?color=cb3837&logo=npm" alt="npm" /></a>
+  <a href="https://github.com/Foisalislambd/pgshell/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Foisalislambd/pgshell/ci.yml?branch=main&label=CI" alt="CI" /></a>
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
@@ -305,6 +306,8 @@ pgshell/
 │       ├── sqlHighlight.ts    # SQL syntax highlighting
 │       ├── sqlIdent.ts        # Identifier escape/validation
 │       └── promptConfirm.ts   # y/N CLI confirmation
+├── tests/                       # Unit tests (Vitest)
+├── .github/workflows/ci.yml     # CI pipeline
 ├── .env.example
 ├── package.json
 └── README.md
@@ -318,6 +321,8 @@ pgshell/
 | `npm run build` | Build to `dist/` |
 | `npm start` | Run built output |
 | `npm run typecheck` | TypeScript check without emit |
+| `npm test` | Run unit tests |
+| `npm run ci` | Typecheck + test + build (used by CI / publish) |
 
 ---
 
@@ -336,4 +341,8 @@ For cloud providers (e.g. AWS RDS, Supabase), SSL is usually required. Use a URL
 
 ## 📄 License
 
-ISC
+[ISC](./LICENSE)
+
+## 🤝 Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md). Security reports: [SECURITY.md](./SECURITY.md).
