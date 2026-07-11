@@ -66,7 +66,7 @@ export async function executeDoctorCommand(flagsInput: Partial<CliFlags> = {}) {
       version: row.version
     };
 
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       printJson(report);
       return;
     }
@@ -85,7 +85,7 @@ export async function executeDoctorCommand(flagsInput: Partial<CliFlags> = {}) {
     console.log();
     logInfo(flags, chalk.dim('Tip: use --json for machine-readable output.'));
   } catch (error: unknown) {
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       printJson({ ok: false, error: sanitizeErrorMessage(error) });
     } else {
       console.error(chalk.red(`\nDoctor failed: ${sanitizeErrorMessage(error)}\n`));

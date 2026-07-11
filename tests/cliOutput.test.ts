@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { resolveCliFlags } from '../src/cli/flags.js';
-import { cellToString, rowsToCsv } from '../src/cli/output.js';
+import { cellToString, rowsToCsv, emitRows } from '../src/cli/output.js';
 
 describe('resolveCliFlags', () => {
   it('defaults to human', () => {
@@ -43,5 +43,32 @@ describe('rowsToCsv', () => {
   it('stringifies objects and nulls', () => {
     expect(cellToString(null)).toBe('');
     expect(cellToString({ a: 1 })).toBe('{"a":1}');
+  });
+});
+
+describe('emitRows json rowCount', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('preserves envelope rowCount (affected rows) over rows.length', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const flags = resolveCliFlags({ json: true });
+    emitRows(flags, [], {
+      jsonEnvelope: { command: 'INSERT', rowCount: 3, sql: 'INSERT ...' }
+    });
+    const payload = JSON.parse(String(spy.mock.calls[0]?.[0]));
+    expect(payload.rowCount).toBe(3);
+    expect(payload.rows).toEqual([]);
+    expect(payload.command).toBe('INSERT');
+  });
+
+  it('defaults rowCount to rows.length when envelope omits it', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const flags = resolveCliFlags({ json: true });
+    emitRows(flags, [{ a: 1 }, { a: 2 }], { jsonEnvelope: { type: 'tables' } });
+    const payload = JSON.parse(String(spy.mock.calls[0]?.[0]));
+    expect(payload.rowCount).toBe(2);
+    expect(payload.type).toBe('tables');
   });
 });

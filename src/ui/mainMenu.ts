@@ -690,7 +690,6 @@ async function handleDropAllTables() {
 }
 
 async function executeSqlAndShow(sql: string) {
-  pushQueryHistory(sql);
   try {
     const result = await withSpinner(
       'Running your query...',
@@ -700,6 +699,7 @@ async function executeSqlAndShow(sql: string) {
         failMessage: 'Query failed'
       }
     );
+    pushQueryHistory(sql);
     const commandLabel = result.command || 'query';
     const rowCount = result.rowCount !== null ? ` (${result.rowCount} rows)` : '';
     console.log(chalk.dim('\nExecuted: ') + highlightSql(sql));

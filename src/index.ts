@@ -18,7 +18,7 @@ import { flagsFromCommandOpts } from './cli/flags.js';
 import chalk from 'chalk';
 import { sanitizeErrorMessage } from './utils/sanitizeError.js';
 
-config();
+config({ quiet: true });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf8')) as { version: string };

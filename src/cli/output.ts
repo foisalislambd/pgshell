@@ -58,10 +58,12 @@ export function emitRows(
   const format: OutputFormat = flags.format;
 
   if (format === 'json') {
+    const envelope = options?.jsonEnvelope ?? {};
     printJson({
-      ...(options?.jsonEnvelope ?? {}),
-      rowCount: rows.length,
-      rows
+      ...envelope,
+      rows,
+      // Keep explicit envelope rowCount (e.g. pg affected rows); else use returned row count
+      rowCount: 'rowCount' in envelope ? envelope.rowCount : rows.length
     });
     return;
   }

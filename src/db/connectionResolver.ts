@@ -275,14 +275,15 @@ export async function resolveConnection(
     if (envLoginAttempted) {
       const probe = await probeConnection(storedResolved.connectionString);
       if (probe === 'ok' || probe === 'nodb') {
+        // stderr so --json/--csv stdout stays machine-parseable
         if (envDbName) {
-          console.log(
+          console.error(
             chalk.gray(
-              `.env login failed — using saved system credentials (database from .env: "${envDbName}")\n`
+              `.env login failed — using saved system credentials (database from .env: "${envDbName}")`
             )
           );
         } else {
-          console.log(chalk.gray('.env login failed — using saved system credentials\n'));
+          console.error(chalk.gray('.env login failed — using saved system credentials'));
         }
         return storedResolved;
       }

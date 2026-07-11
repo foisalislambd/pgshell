@@ -84,7 +84,7 @@ export async function executeDbCreateCommand(name: string, flagsInput: Partial<C
   try {
     await connect({ connectionString: adminConnectionString });
     await query(`CREATE DATABASE "${escaped}"`);
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       console.log(JSON.stringify({ ok: true, created: dbName }, null, 2));
     } else {
       logInfo(flags, chalk.green(`\n✓ Database "${dbName}" created successfully!`));
@@ -151,7 +151,7 @@ export async function executeDbDropCommand(
       [dbName]
     );
     await query(`DROP DATABASE "${escaped}"`);
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       console.log(JSON.stringify({ ok: true, dropped: dbName }, null, 2));
     } else {
       logInfo(flags, chalk.green(`\n✓ Database "${dbName}" dropped successfully!`));

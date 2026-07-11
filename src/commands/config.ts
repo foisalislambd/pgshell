@@ -10,7 +10,7 @@ export async function executeConfigShowCommand(flagsInput: Partial<CliFlags> = {
   const profile = loadStoredProfile();
 
   if (!profile) {
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       printJson({ profile: null });
     } else {
       console.log(chalk.yellow('\nNo saved profile found (~/.pgshell/config.json).\n'));
@@ -27,7 +27,7 @@ export async function executeConfigShowCommand(flagsInput: Partial<CliFlags> = {
     password: '[stored in OS keychain]'
   };
 
-  if (flags.format === 'json') {
+  if (flags.format !== 'human') {
     printJson({ profile: safe });
     return;
   }
@@ -47,7 +47,7 @@ export async function executeConfigClearCommand(flagsInput: Partial<CliFlags> = 
   const profile = loadStoredProfile();
 
   if (!profile) {
-    if (flags.format === 'json') {
+    if (flags.format !== 'human') {
       printJson({ cleared: false, reason: 'no_profile' });
     } else {
       console.log(chalk.yellow('\nNo saved profile to clear.\n'));
@@ -55,7 +55,7 @@ export async function executeConfigClearCommand(flagsInput: Partial<CliFlags> = 
     return;
   }
 
-  if (!flags.quiet && flags.format === 'human') {
+  if (flags.format === 'human' && !flags.quiet) {
     const ok = await promptConfirmation(
       chalk.yellow(
         `\nClear saved profile for ${profile.user}@${profile.host}:${profile.port} and remove keychain password? (y/N): `
@@ -68,7 +68,7 @@ export async function executeConfigClearCommand(flagsInput: Partial<CliFlags> = 
   }
 
   const cleared = await clearStoredProfile();
-  if (flags.format === 'json') {
+  if (flags.format !== 'human') {
     printJson({ cleared });
   } else {
     console.log(chalk.green('\n✓ Saved profile and keychain password cleared.\n'));
