@@ -329,7 +329,7 @@ pgshell/
 │       ├── sqlIdent.ts        # Identifier escape/validation
 │       └── promptConfirm.ts   # y/N CLI confirmation
 ├── tests/                       # Unit tests (Vitest)
-├── .github/workflows/ci.yml     # CI pipeline
+├── .github/workflows/ci.yml     # CI, then publish on main
 ├── .env.example
 ├── package.json
 └── README.md

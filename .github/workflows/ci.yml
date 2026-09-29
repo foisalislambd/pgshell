@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-    branches: [main, master]
+    branches: [main]
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Vitest 4.1+ / ESLint 10 need Node 20+ (util.styleText, etc.)
+        # Vitest 4.1+ / ESLint 10 need Node 20+
         node-version: [20, 22, 24]
 
     steps:
@@ -43,6 +43,95 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Audit (high+)
-        run: npm audit --audit-level=high
-        continue-on-error: true
+  release:
+    name: Publish
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Check commit message
+        id: gate
+        env:
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+          COMMIT_MSGS: ${{ join(github.event.commits.*.message, ' || ') }}
+        run: |
+          combined="${HEAD_MSG}
+          ${COMMIT_MSGS}"
+          if printf '%s\n' "$combined" | grep -Eqi 'skip[[:space:]]+release'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Release skipped: commit message contains 'skip release'."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Node.js
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Use npm with trusted publishing
+        if: steps.gate.outputs.skip != 'true'
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        if: steps.gate.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Build
+        if: steps.gate.outputs.skip != 'true'
+        run: npm run build
+
+      - name: Publish to npm
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "pgshell@${version}" version > /dev/null 2>&1; then
+            echo "npm: ${version} is already published. Skipping."
+            exit 0
+          fi
+          npm publish --provenance --access public --ignore-scripts
+
+      - name: Publish to GitHub Packages
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          npm pkg set name="@foisalislambd/pgshell"
+          npm pkg set repository="https://github.com/foisalislambd/pgshell.git"
+          printf '%s\n' \
+            '@foisalislambd:registry=https://npm.pkg.github.com' \
+            '//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}' \
+            > .npmrc
+          if npm view "@foisalislambd/pgshell@${version}" version --registry https://npm.pkg.github.com > /dev/null 2>&1; then
+            echo "GitHub Packages: ${version} is already published. Skipping."
+            exit 0
+          fi
+          npm publish --ignore-scripts --access public --registry https://npm.pkg.github.com
+
+      - name: Create GitHub release
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tag="v${version}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "GitHub release ${tag} already exists. Skipping."
+            exit 0
+          fi
+          gh release create "$tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --generate-notes
