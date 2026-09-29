@@ -12,6 +12,13 @@ import { withSpinner } from '../utils/spinner.js';
 import { highlightSql } from '../utils/sqlHighlight.js';
 import { escapeSqlIdentifier, isValidIdentifierName } from '../utils/sqlIdent.js';
 import { loadQueryHistory, pushQueryHistory, trimHistoryPreview } from '../db/queryHistory.js';
+import {
+  CLEAN_PUBLIC_SCHEMA_SQL,
+  PUBLIC_CLEANUP_DETAIL_SQL,
+  dropTableAndLeftoversSql,
+  formatCleanupItems,
+  parseCleanupItems,
+} from '../db/publicCleanup.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -159,7 +166,7 @@ export async function runInteractiveUI() {
         { name: chalk.magenta('Schema') + '   📖 Table structure', value: 'describe_table' as const, description: 'See columns, types, details' },
         { name: chalk.magenta('Schema') + '   ➕ Create new table', value: 'create_table' as const, description: 'Create a new table' },
         { name: chalk.magenta('Schema') + '   🗑️  Delete one table', value: 'drop_table' as const, description: 'Remove a single table' },
-        { name: chalk.red('Schema') + '   🚨 Delete all tables', value: 'drop_all_tables' as const, description: 'Warning! Removes all data' },
+        { name: chalk.red('Schema') + '   🚨 Clean public schema', value: 'drop_all_tables' as const, description: 'Tables, views, enums, and functions' },
         { name: chalk.yellow('Server') + '   📂 List all databases', value: 'list_databases' as const, description: 'See all databases' },
         { name: chalk.yellow('Server') + '   🔄 Switch database', value: 'switch_database' as const, description: 'Reconnect to different DB' },
         { name: chalk.yellow('Server') + '   ➕ Create database', value: 'create_database' as const, description: 'Create new database' },
@@ -654,36 +661,37 @@ async function handleDropSpecificTable() {
   );
 
   const isSure = await confirm({ 
-    message: `Are you sure you want to drop table "${tableName}"? (This will also drop dependent objects)`, 
+    message: `Drop table "${tableName}"? Types and functions used only by this table are removed too`, 
     default: false 
   });
 
   if (isSure) {
-    const escapedTable = escapeSqlIdentifier(tableName);
-    await dbQuery(`DROP TABLE "${escapedTable}" CASCADE;`);
-    console.log(chalk.green(`\n✓ Table "${tableName}" dropped successfully!`));
+    await dbQuery(dropTableAndLeftoversSql(tableName));
+    console.log(chalk.green(`\n✓ Table "${tableName}" dropped. Types and functions used only by it were removed.`));
   } else {
     console.log(chalk.gray('\nOperation cancelled.'));
   }
 }
 
 async function handleDropAllTables() {
-  const tables = await getPublicTables();
-  if (tables.length === 0) {
-    console.log(chalk.yellow('No tables found in the database.'));
+  const detail = await dbQuery(PUBLIC_CLEANUP_DETAIL_SQL);
+  const items = parseCleanupItems(detail.rows as { kind: string; name: string }[]);
+  if (items.length === 0) {
+    console.log(chalk.yellow('Nothing to clean in the public schema. Extension objects are left in place.'));
     return;
   }
-  console.log(chalk.red.bold(`\n⚠️  WARNING: You are about to drop ALL ${tables.length} tables in the public schema!`));
-  
-  const isSure = await confirm({ 
-    message: 'Are you absolutely sure you want to proceed? THIS CANNOT BE UNDONE!', 
-    default: false 
+  console.log(chalk.red.bold('\n⚠️  WARNING: This clears the public schema:'));
+  console.log(chalk.dim(formatCleanupItems(items)));
+  console.log(chalk.dim('Extension objects such as pgcrypto stay.'));
+
+  const isSure = await confirm({
+    message: 'Drop these tables, views, sequences, functions, and types? THIS CANNOT BE UNDONE!',
+    default: false,
   });
 
   if (isSure) {
-    const tableNames = tables.map((r) => `"${escapeSqlIdentifier(r.table_name)}"`).join(', ');
-    await dbQuery(`DROP TABLE ${tableNames} CASCADE;`);
-    console.log(chalk.green(`\n✓ All tables dropped successfully!`));
+    await dbQuery(CLEAN_PUBLIC_SCHEMA_SQL);
+    console.log(chalk.green('\n✓ Public schema cleaned.'));
   } else {
     console.log(chalk.gray('\nOperation cancelled.'));
   }

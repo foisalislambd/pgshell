@@ -86,7 +86,7 @@
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell create &lt;name&gt;</code></td><td class="px-6 py-3">Create a new database.</td></tr>
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell drop &lt;name&gt;</code></td><td class="px-6 py-3">Drop a database. Use <code class="font-mono text-xs">--yes</code> to skip confirmation.</td></tr>
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell table [dbName]</code></td><td class="px-6 py-3">List tables; optional database name or interactive pick.</td></tr>
-            <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell delete [dbName]</code></td><td class="px-6 py-3">Drop all tables in a database (with confirmation).</td></tr>
+            <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell delete [dbName]</code></td><td class="px-6 py-3">Clear public tables, views, sequences, types, and functions. Extension objects stay.</td></tr>
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell doctor</code></td><td class="px-6 py-3">Connection health: latency, version, SSL, credential source.</td></tr>
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell config show|clear</code></td><td class="px-6 py-3">Inspect or clear the saved profile (password never printed).</td></tr>
             <tr><td class="whitespace-nowrap px-6 py-3 font-mono text-xs text-emerald-900 sm:text-sm"><code>pgshell completion &lt;shell&gt;</code></td><td class="px-6 py-3">Print bash / zsh / powershell completion.</td></tr>
@@ -129,8 +129,8 @@ eval "$(pgshell completion bash)"</code></pre>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Table structure</td><td class="px-6 py-3">Columns, types, nullability, defaults.</td></tr>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Create new table</td><td class="px-6 py-3">Define tables with column syntax.</td></tr>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Add new row</td><td class="px-6 py-3">Insert with guided prompts.</td></tr>
-            <tr><td class="px-6 py-3 font-medium text-slate-900">Delete one table</td><td class="px-6 py-3">Drop a single table with confirmation.</td></tr>
-            <tr><td class="px-6 py-3 font-medium text-slate-900">Delete all tables</td><td class="px-6 py-3">Drop all <code class="font-mono text-xs">public</code> tables—extra confirmation.</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-slate-900">Delete one table</td><td class="px-6 py-3">Drop one table, then unused types and functions.</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-slate-900">Clean public schema</td><td class="px-6 py-3">Drop public tables, views, sequences, enums, and functions. Extension objects stay.</td></tr>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Run custom SQL</td><td class="px-6 py-3">Execute arbitrary SQL.</td></tr>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Recent queries</td><td class="px-6 py-3">Re-run from local history (<code class="font-mono text-xs">~/.pgshell/history.json</code>).</td></tr>
             <tr><td class="px-6 py-3 font-medium text-slate-900">Monitor active queries</td><td class="px-6 py-3">Live view of running queries.</td></tr>

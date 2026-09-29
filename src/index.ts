@@ -43,7 +43,7 @@ Commands:
   create            Create a database
   drop              Drop a database (--yes to skip confirm)
   table             List tables in a database
-  delete            Drop all tables in a database
+  delete            Clear public tables, views, types, and functions
   doctor            Connection health check
   config show|clear Saved profile (no passwords printed)
   completion        Print shell completion script
@@ -159,7 +159,7 @@ program
 
 program
   .command('delete [dbName]')
-  .description('Drop all tables in the public schema of a database')
+  .description('Clear public tables, views, sequences, types, and functions')
   .action(async (dbName: string | undefined) => {
     try {
       await executeDeleteCommand(dbName);

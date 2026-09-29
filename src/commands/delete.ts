@@ -6,6 +6,7 @@ import { fuzzySelect } from '../ui/fuzzySelect.js';
 import { printEnvHint } from '../db/env.js';
 import { sanitizeErrorMessage } from '../utils/sanitizeError.js';
 import { promptConfirmation } from '../utils/promptConfirm.js';
+import { CLEAN_PUBLIC_SCHEMA_SQL, PUBLIC_CLEANUP_DETAIL_SQL, formatCleanupItems, parseCleanupItems } from '../db/publicCleanup.js';
 
 const GET_DATABASES_SQL = `
   SELECT datname as "Database", pg_size_pretty(pg_database_size(datname)) as "Size"
@@ -14,28 +15,10 @@ const GET_DATABASES_SQL = `
   ORDER BY datname;
 `;
 
-const GET_TABLES_SQL = `
-  SELECT tablename
-  FROM pg_tables
-  WHERE schemaname = 'public'
-  ORDER BY tablename;
-`;
-
-const DROP_ALL_TABLES_SQL = `
-  DO $$
-  DECLARE
-    r RECORD;
-  BEGIN
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-      EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
-    END LOOP;
-  END $$;
-`;
-
 /**
- * Delete (drop) all tables in a database.
- * - pgshell delete database-name  → drops all tables in that database
- * - pgshell delete  → if .env has DB_NAME/DATABASE_URL, use it; else prompt to select database
+ * Clear user objects in the public schema.
+ * - pgshell delete database-name  → that database
+ * - pgshell delete  → DB_NAME/DATABASE_URL, or an interactive pick
  */
 export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
   try {
@@ -75,7 +58,7 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
       }
 
       const selected = await fuzzySelect(
-        'Select database to delete all tables from (type to search):',
+        'Select database to clean (type to search):',
         databases.map((r) => ({ name: `${r.Database} (${r.Size})`, value: r.Database }))
       );
 
@@ -87,21 +70,23 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
 
     await connect({ connectionString });
 
-    const tablesResult = await query(GET_TABLES_SQL);
-    const tables = tablesResult.rows as { tablename: string }[];
+    const detail = await query(PUBLIC_CLEANUP_DETAIL_SQL);
+    const items = parseCleanupItems(detail.rows as { kind: string; name: string }[]);
 
-    if (tables.length === 0) {
-      console.log(chalk.yellow(`No tables found in database "${targetDbName}". Nothing to delete.`));
+    if (items.length === 0) {
+      console.log(chalk.yellow(`Nothing to clean in "${targetDbName}". Extension objects are left in place.`));
       await disconnect();
       return;
     }
 
-    console.log(chalk.cyan(`Found ${tables.length} table(s) in "${targetDbName}":`));
-    tables.forEach((t) => console.log(chalk.dim(`  - ${t.tablename}`)));
+    console.log(chalk.cyan(`Public schema in "${targetDbName}" will be cleared:`));
+    console.log(chalk.dim(formatCleanupItems(items)));
     console.log();
 
     const confirmed = await promptConfirmation(
-      chalk.yellow(`Are you sure you want to DROP all ${tables.length} table(s) in "${targetDbName}"? This cannot be undone. (y/N): `)
+      chalk.yellow(
+        `Drop these tables, views, sequences, functions, and types in "${targetDbName}"? Extension objects stay. This cannot be undone. (y/N): `
+      )
     );
 
     if (!confirmed) {
@@ -110,8 +95,8 @@ export async function executeDeleteCommand(dbNameArg?: string): Promise<void> {
       process.exit(0);
     }
 
-    await query(DROP_ALL_TABLES_SQL);
-    console.log(chalk.green(`\n✓ All ${tables.length} table(s) dropped from "${targetDbName}" successfully!`));
+    await query(CLEAN_PUBLIC_SCHEMA_SQL);
+    console.log(chalk.green(`\n✓ Public schema cleaned in "${targetDbName}".`));
   } catch (err) {
     if (!process.stdin.isTTY) {
       console.error(chalk.red('\nError: Missing database credentials. Run from a terminal or create a .env file.\n'));

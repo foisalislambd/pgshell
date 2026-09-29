@@ -191,7 +191,7 @@ All commands support `.env` credentials. If no `.env` is present, PgShell will p
 | `pgshell create <name>` | Create a new database |
 | `pgshell drop <name>` | Drop a database (`--yes` to skip confirmation) |
 | `pgshell table [dbName]` | List all tables — specify `dbName` or use `.env` / select interactively |
-| `pgshell delete [dbName]` | Drop all tables in a database — with confirmation |
+| `pgshell delete [dbName]` | Clear public tables, views, sequences, types, and functions — with confirmation. Extension objects stay |
 | `pgshell doctor` | Connection health check (latency, version, SSL, credential source) |
 | `pgshell config show` | Show saved profile (never prints password) |
 | `pgshell config clear` | Clear saved profile + keychain password |
@@ -241,7 +241,7 @@ Run `pgshell` or `pgshell ui` to open the interactive menu.
 | ➕ **Create new table** | Define tables with column syntax |
 | 📥 **Add new row** | Insert with guided prompts per column |
 | 🗑️ **Delete one table** | Drop a single table (with confirmation) |
-| 🚨 **Delete all tables** | Drop all `public` tables (extra confirmation) |
+| 🚨 **Clean public schema** | Drop public tables, views, sequences, enums, and functions. Extension objects stay |
 | ⚡ **Run custom SQL** | Execute any SQL command |
 | 🕘 **Recent queries** | Re-run from `~/.pgshell/history.json` |
 | 📊 **Monitor active queries** | Live view of running queries |
