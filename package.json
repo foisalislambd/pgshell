@@ -52,7 +52,7 @@
     ".env.example"
   ],
   "dependencies": {
-    "@inquirer/prompts": "^8.4.3",
+    "@inquirer/prompts": "^8.7.2",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
@@ -60,18 +60,18 @@
     "dotenv": "^17.4.2",
     "fzf": "^0.5.2",
     "gradient-string": "^3.0.0",
-    "ora": "^9.4.0",
-    "pg": "^8.20.0"
+    "ora": "^9.4.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.1.1",
-    "@types/pg": "^8.20.0",
-    "eslint": "^10.7.0",
+    "@types/node": "^26.6.3",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.11.0",
     "tsup": "^8.5.1",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.63.0",
-    "vitest": "^4.1.10"
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^4.1.11"
   }
 }

@@ -42,7 +42,7 @@ export async function fuzzySelect<T = string>(
   const selected = await search<string | T>({
     message,
     pageSize: options?.pageSize ?? 15, // Increased default page size to fit more options
-    default: defaultName as string | undefined,
+    ...(defaultName !== undefined ? { default: defaultName } : {}),
     source: async (input: string | undefined) => {
       const filtered =
         !input || input.trim() === ''
