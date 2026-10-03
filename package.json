@@ -55,7 +55,7 @@
     "@inquirer/prompts": "^8.7.2",
     "chalk": "^5.6.2",
     "cli-table3": "^0.6.5",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "cross-keychain": "^1.1.0",
     "dotenv": "^17.4.2",
     "fzf": "^0.5.2",
