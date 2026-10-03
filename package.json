@@ -57,7 +57,7 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
     "cross-keychain": "^1.1.0",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.4",
     "fzf": "^0.5.2",
     "gradient-string": "^3.0.0",
     "ora": "^9.4.1",
